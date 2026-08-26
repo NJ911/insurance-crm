@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
       sortOrder
     };
 
-    const clients = getClients(filters);
-    const stats = getDashboardStats(filters.urgencyDaysThreshold);
+    const clients = await getClients(filters);
+    const stats = await getDashboardStats(filters.urgencyDaysThreshold);
 
     return NextResponse.json({
       clients,
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       policyNotes: policyNotes?.trim() || undefined
     };
 
-    const newClient = createClientWithPolicy(payload);
+    const newClient = await createClientWithPolicy(payload);
     return NextResponse.json({ client: newClient, success: true }, { status: 201 });
   } catch (error: any) {
     console.error('Error creating client:', error);

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       notes: notes?.trim() || undefined
     };
 
-    const newPolicy = addPolicyToClient(payload);
+    const newPolicy = await addPolicyToClient(payload);
     return NextResponse.json({ policy: newPolicy, success: true }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to add policy' }, { status: 500 });

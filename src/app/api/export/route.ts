@@ -13,9 +13,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const includeArchived = searchParams.get('includeArchived') === 'true';
 
-    let clients = getClients({ status: 'all' });
+    let clients = await getClients({ status: 'all' });
     if (includeArchived) {
-      const archived = getClients({ status: 'archived' });
+      const archived = await getClients({ status: 'archived' });
       clients = [...clients, ...archived];
     }
 

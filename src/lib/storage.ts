@@ -1,4 +1,5 @@
 import { getDb } from './db';
+import { supabase, isSupabaseConfigured } from './supabase';
 import {
   Client,
   Policy,
@@ -63,31 +64,46 @@ function mapRowToPolicy(row: any, urgencyThreshold: number = 30): Policy {
   };
 }
 
-export function getClients(filters?: ClientFilterOptions): Client[] {
-  const db = getDb();
+export async function getClients(filters?: ClientFilterOptions): Promise<Client[]> {
   const threshold = filters?.urgencyDaysThreshold || 30;
 
-  // 1. Fetch raw client rows
-  let clientQuery = 'SELECT * FROM clients';
-  const clientConditions: string[] = [];
-  const clientParams: any[] = [];
+  let clientRows: any[] = [];
+  let policyRows: any[] = [];
 
-  if (filters?.status === 'archived') {
-    clientConditions.push('archived_at IS NOT NULL');
+  if (isSupabaseConfigured && supabase) {
+    // 1. Fetch from Supabase
+    let clientQuery = supabase.from('clients').select('*');
+    if (filters?.status === 'archived') {
+      clientQuery = clientQuery.not('archived_at', 'is', null);
+    } else {
+      clientQuery = clientQuery.is('archived_at', null);
+    }
+
+    const { data: cData, error: cErr } = await clientQuery;
+    if (cErr) console.error('Supabase fetch clients error:', cErr);
+    clientRows = cData || [];
+
+    const { data: pData, error: pErr } = await supabase
+      .from('policies')
+      .select('*')
+      .is('archived_at', null);
+    if (pErr) console.error('Supabase fetch policies error:', pErr);
+    policyRows = pData || [];
   } else {
-    clientConditions.push('archived_at IS NULL');
+    // 2. Fetch from Local SQLite
+    const db = getDb();
+    let clientQueryStr = 'SELECT * FROM clients';
+    if (filters?.status === 'archived') {
+      clientQueryStr += ' WHERE archived_at IS NOT NULL';
+    } else {
+      clientQueryStr += ' WHERE archived_at IS NULL';
+    }
+    clientRows = db.prepare(clientQueryStr).all();
+    policyRows = db.prepare('SELECT * FROM policies WHERE archived_at IS NULL').all();
   }
 
-  if (clientConditions.length > 0) {
-    clientQuery += ' WHERE ' + clientConditions.join(' AND ');
-  }
-
-  const clientRows = db.prepare(clientQuery).all(...clientParams);
-
-  // 2. Fetch all policies
-  const policyRows = db.prepare('SELECT * FROM policies WHERE archived_at IS NULL').all();
+  // 3. Assemble policies by client ID
   const policiesByClientId = new Map<string, Policy[]>();
-
   for (const pr of policyRows) {
     const policy = mapRowToPolicy(pr, threshold);
     const list = policiesByClientId.get(policy.clientId) || [];
@@ -95,13 +111,12 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
     policiesByClientId.set(policy.clientId, list);
   }
 
-  // 3. Assemble clients with policies & compute aggregate statuses
+  // 4. Assemble clients with policies & compute aggregate statuses
   let clients: Client[] = [];
 
-  for (const cr of clientRows as any[]) {
+  for (const cr of clientRows) {
     let clientPolicies = policiesByClientId.get(cr.id) || [];
 
-    // If a policy type filter is active (e.g. 'auto', 'home', 'commercial'), we check if client matches
     const hasMatchingPolicyType = !filters?.policyType || filters.policyType === 'all'
       ? true
       : clientPolicies.some(p => p.policyType === filters.policyType);
@@ -110,7 +125,6 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
       continue;
     }
 
-    // Determine highest urgency across all policies
     let clientStatus: ClientStatus = 'active';
     let nearestExpiry = '9999-12-31';
     let nearestRenewal = '9999-12-31';
@@ -160,17 +174,15 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
     clients.push(clientObj);
   }
 
-  // 4. Search Filter
+  // 5. Search Filter
   if (filters?.search && filters.search.trim()) {
     const term = filters.search.trim().toLowerCase();
     clients = clients.filter(c => {
-      // Check personal info
       const nameMatch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(term);
       const dlMatch = (c.dlNumber || '').toLowerCase().includes(term);
       const phoneMatch = c.phoneNumber?.toLowerCase().includes(term);
       const emailMatch = c.email?.toLowerCase().includes(term);
 
-      // Check all policies for matching plate, address, business name, or policy #
       const policyMatch = c.policies.some(p =>
         (p.plateNumber && p.plateNumber.toLowerCase().includes(term)) ||
         (p.vehicleMakeModel && p.vehicleMakeModel.toLowerCase().includes(term)) ||
@@ -184,7 +196,7 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
     });
   }
 
-  // 5. Status Filter
+  // 6. Status Filter
   if (filters?.status && filters.status !== 'all' && filters.status !== 'archived') {
     if (filters.status === 'due_soon') {
       clients = clients.filter(c => c.status === 'due_soon');
@@ -205,7 +217,7 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
     }
   }
 
-  // 6. Sorting
+  // 7. Sorting
   const sortBy = filters?.sortBy || 'expiryDate';
   const sortOrder = filters?.sortOrder || 'asc';
 
@@ -226,45 +238,62 @@ export function getClients(filters?: ClientFilterOptions): Client[] {
   return clients;
 }
 
-export function getClientById(id: string): Client | null {
-  const clients = getClients({ status: 'all' });
+export async function getClientById(id: string): Promise<Client | null> {
+  const clients = await getClients({ status: 'all' });
   const found = clients.find(c => c.id === id);
   if (found) return found;
 
-  const archived = getClients({ status: 'archived' });
+  const archived = await getClients({ status: 'archived' });
   return archived.find(c => c.id === id) || null;
 }
 
-export function createClientWithPolicy(data: ClientCreatePayload): Client {
-  const db = getDb();
+export async function createClientWithPolicy(data: ClientCreatePayload): Promise<Client> {
   const clientId = 'c-' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
   const policyId = 'pol-' + Math.random().toString(36).substring(2, 9);
   const now = new Date().toISOString();
 
-  const insertClient = db.prepare(`
-    INSERT INTO clients (
-      id, first_name, last_name, date_of_birth, dl_number,
-      phone_number, email, notes, created_at, updated_at, archived_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL
-    )
-  `);
+  if (isSupabaseConfigured && supabase) {
+    const { error: cErr } = await supabase.from('clients').insert({
+      id: clientId,
+      first_name: data.firstName.trim(),
+      last_name: data.lastName.trim(),
+      date_of_birth: data.dateOfBirth,
+      dl_number: data.dlNumber.trim().toUpperCase(),
+      phone_number: data.phoneNumber?.trim() || null,
+      email: data.email?.trim() || null,
+      notes: data.notes?.trim() || null,
+      created_at: now,
+      updated_at: now
+    });
+    if (cErr) throw new Error(cErr.message);
 
-  const insertPolicy = db.prepare(`
-    INSERT INTO policies (
-      id, client_id, policy_type, policy_number,
-      plate_number, vehicle_make_model,
-      property_address, property_type,
-      business_name, business_type,
-      term_start_date, renewal_date, expiry_date,
-      notes, created_at, updated_at, archived_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL
-    )
-  `);
-
-  const tx = db.transaction(() => {
-    insertClient.run(
+    const { error: pErr } = await supabase.from('policies').insert({
+      id: policyId,
+      client_id: clientId,
+      policy_type: data.policyType,
+      policy_number: data.policyNumber?.trim() || null,
+      plate_number: data.plateNumber?.trim().toUpperCase() || null,
+      vehicle_make_model: data.vehicleMakeModel?.trim() || null,
+      property_address: data.propertyAddress?.trim() || null,
+      property_type: data.propertyType?.trim() || null,
+      business_name: data.businessName?.trim() || null,
+      business_type: data.businessType?.trim() || null,
+      term_start_date: data.termStartDate,
+      renewal_date: data.renewalDate,
+      expiry_date: data.expiryDate,
+      notes: data.policyNotes?.trim() || null,
+      created_at: now,
+      updated_at: now
+    });
+    if (pErr) throw new Error(pErr.message);
+  } else {
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO clients (
+        id, first_name, last_name, date_of_birth, dl_number,
+        phone_number, email, notes, created_at, updated_at, archived_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+    `).run(
       clientId,
       data.firstName.trim(),
       data.lastName.trim(),
@@ -277,7 +306,16 @@ export function createClientWithPolicy(data: ClientCreatePayload): Client {
       now
     );
 
-    insertPolicy.run(
+    db.prepare(`
+      INSERT INTO policies (
+        id, client_id, policy_type, policy_number,
+        plate_number, vehicle_make_model,
+        property_address, property_type,
+        business_name, business_type,
+        term_start_date, renewal_date, expiry_date,
+        notes, created_at, updated_at, archived_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+    `).run(
       policyId,
       clientId,
       data.policyType,
@@ -295,92 +333,135 @@ export function createClientWithPolicy(data: ClientCreatePayload): Client {
       now,
       now
     );
-  });
+  }
 
-  tx();
-
-  return getClientById(clientId)!;
+  const newClient = await getClientById(clientId);
+  return newClient!;
 }
 
-export function addPolicyToClient(payload: PolicyCreatePayload): Policy {
-  const db = getDb();
+export async function addPolicyToClient(payload: PolicyCreatePayload): Promise<Policy> {
   const policyId = 'pol-' + Math.random().toString(36).substring(2, 9);
   const now = new Date().toISOString();
 
-  const insertPolicy = db.prepare(`
-    INSERT INTO policies (
-      id, client_id, policy_type, policy_number,
-      plate_number, vehicle_make_model,
-      property_address, property_type,
-      business_name, business_type,
-      term_start_date, renewal_date, expiry_date,
-      notes, created_at, updated_at, archived_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL
-    )
-  `);
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('policies').insert({
+      id: policyId,
+      client_id: payload.clientId,
+      policy_type: payload.policyType,
+      policy_number: payload.policyNumber?.trim() || null,
+      plate_number: payload.plateNumber?.trim().toUpperCase() || null,
+      vehicle_make_model: payload.vehicleMakeModel?.trim() || null,
+      property_address: payload.propertyAddress?.trim() || null,
+      property_type: payload.propertyType?.trim() || null,
+      business_name: payload.businessName?.trim() || null,
+      business_type: payload.businessType?.trim() || null,
+      term_start_date: payload.termStartDate,
+      renewal_date: payload.renewalDate,
+      expiry_date: payload.expiryDate,
+      notes: payload.notes?.trim() || null,
+      created_at: now,
+      updated_at: now
+    }).select().single();
 
-  insertPolicy.run(
-    policyId,
-    payload.clientId,
-    payload.policyType,
-    payload.policyNumber?.trim() || null,
-    payload.plateNumber?.trim().toUpperCase() || null,
-    payload.vehicleMakeModel?.trim() || null,
-    payload.propertyAddress?.trim() || null,
-    payload.propertyType?.trim() || null,
-    payload.businessName?.trim() || null,
-    payload.businessType?.trim() || null,
-    payload.termStartDate,
-    payload.renewalDate,
-    payload.expiryDate,
-    payload.notes?.trim() || null,
-    now,
-    now
-  );
+    if (error) throw new Error(error.message);
+    return mapRowToPolicy(data);
+  } else {
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO policies (
+        id, client_id, policy_type, policy_number,
+        plate_number, vehicle_make_model,
+        property_address, property_type,
+        business_name, business_type,
+        term_start_date, renewal_date, expiry_date,
+        notes, created_at, updated_at, archived_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+    `).run(
+      policyId,
+      payload.clientId,
+      payload.policyType,
+      payload.policyNumber?.trim() || null,
+      payload.plateNumber?.trim().toUpperCase() || null,
+      payload.vehicleMakeModel?.trim() || null,
+      payload.propertyAddress?.trim() || null,
+      payload.propertyType?.trim() || null,
+      payload.businessName?.trim() || null,
+      payload.businessType?.trim() || null,
+      payload.termStartDate,
+      payload.renewalDate,
+      payload.expiryDate,
+      payload.notes?.trim() || null,
+      now,
+      now
+    );
 
-  const row = db.prepare('SELECT * FROM policies WHERE id = ?').get(policyId);
-  return mapRowToPolicy(row);
+    const row = db.prepare('SELECT * FROM policies WHERE id = ?').get(policyId);
+    return mapRowToPolicy(row);
+  }
 }
 
-export function updateClientPersonal(id: string, data: Partial<Client>): Client | null {
-  const db = getDb();
-  const existing = getClientById(id);
+export async function updateClientPersonal(id: string, data: Partial<Client>): Promise<Client | null> {
+  const existing = await getClientById(id);
   if (!existing) return null;
 
   const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE clients SET
-      first_name = ?,
-      last_name = ?,
-      date_of_birth = ?,
-      dl_number = ?,
-      phone_number = ?,
-      email = ?,
-      notes = ?,
-      updated_at = ?
-    WHERE id = ?
-  `).run(
-    data.firstName ?? existing.firstName,
-    data.lastName ?? existing.lastName,
-    data.dateOfBirth ?? existing.dateOfBirth,
-    (data.dlNumber ?? existing.dlNumber).toUpperCase(),
-    data.phoneNumber !== undefined ? data.phoneNumber : existing.phoneNumber,
-    data.email !== undefined ? data.email : existing.email,
-    data.notes !== undefined ? data.notes : existing.notes,
-    now,
-    id
-  );
+
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('clients').update({
+      first_name: data.firstName ?? existing.firstName,
+      last_name: data.lastName ?? existing.lastName,
+      date_of_birth: data.dateOfBirth ?? existing.dateOfBirth,
+      dl_number: (data.dlNumber ?? existing.dlNumber).toUpperCase(),
+      phone_number: data.phoneNumber !== undefined ? data.phoneNumber : existing.phoneNumber,
+      email: data.email !== undefined ? data.email : existing.email,
+      notes: data.notes !== undefined ? data.notes : existing.notes,
+      updated_at: now
+    }).eq('id', id);
+
+    if (error) throw new Error(error.message);
+  } else {
+    const db = getDb();
+    db.prepare(`
+      UPDATE clients SET
+        first_name = ?,
+        last_name = ?,
+        date_of_birth = ?,
+        dl_number = ?,
+        phone_number = ?,
+        email = ?,
+        notes = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      data.firstName ?? existing.firstName,
+      data.lastName ?? existing.lastName,
+      data.dateOfBirth ?? existing.dateOfBirth,
+      (data.dlNumber ?? existing.dlNumber).toUpperCase(),
+      data.phoneNumber !== undefined ? data.phoneNumber : existing.phoneNumber,
+      data.email !== undefined ? data.email : existing.email,
+      data.notes !== undefined ? data.notes : existing.notes,
+      now,
+      id
+    );
+  }
 
   return getClientById(id);
 }
 
-export function renewPolicy(payload: RenewalPayload): Policy | null {
-  const db = getDb();
-  const row = db.prepare('SELECT * FROM policies WHERE id = ?').get(payload.policyId) as any;
+export async function renewPolicy(payload: RenewalPayload): Promise<Policy | null> {
+  let row: any = null;
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured && supabase) {
+    const { data } = await supabase.from('policies').select('*').eq('id', payload.policyId).single();
+    row = data;
+  } else {
+    const db = getDb();
+    row = db.prepare('SELECT * FROM policies WHERE id = ?').get(payload.policyId);
+  }
+
   if (!row) return null;
 
-  const now = new Date().toISOString();
   let updatedNotes = row.notes || '';
   const renewalLog = `\n[${format(new Date(), 'yyyy-MM-dd')}] Renewed for ${payload.months} months. Prior term ended ${row.expiry_date}.`;
   if (payload.notes) {
@@ -389,56 +470,90 @@ export function renewPolicy(payload: RenewalPayload): Policy | null {
     updatedNotes += renewalLog;
   }
 
-  db.prepare(`
-    UPDATE policies SET
-      term_start_date = ?,
-      renewal_date = ?,
-      expiry_date = ?,
-      notes = ?,
-      updated_at = ?
-    WHERE id = ?
-  `).run(
-    payload.newTermStartDate,
-    payload.newRenewalDate,
-    payload.newExpiryDate,
-    updatedNotes.trim(),
-    now,
-    payload.policyId
-  );
+  if (isSupabaseConfigured && supabase) {
+    const { data: updatedData, error } = await supabase.from('policies').update({
+      term_start_date: payload.newTermStartDate,
+      renewal_date: payload.newRenewalDate,
+      expiry_date: payload.newExpiryDate,
+      notes: updatedNotes.trim(),
+      updated_at: now
+    }).eq('id', payload.policyId).select().single();
 
-  const updatedRow = db.prepare('SELECT * FROM policies WHERE id = ?').get(payload.policyId);
-  return mapRowToPolicy(updatedRow);
+    if (error) throw new Error(error.message);
+    return mapRowToPolicy(updatedData);
+  } else {
+    const db = getDb();
+    db.prepare(`
+      UPDATE policies SET
+        term_start_date = ?,
+        renewal_date = ?,
+        expiry_date = ?,
+        notes = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      payload.newTermStartDate,
+      payload.newRenewalDate,
+      payload.newExpiryDate,
+      updatedNotes.trim(),
+      now,
+      payload.policyId
+    );
+
+    const updatedRow = db.prepare('SELECT * FROM policies WHERE id = ?').get(payload.policyId);
+    return mapRowToPolicy(updatedRow);
+  }
 }
 
-export function deletePolicy(policyId: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM policies WHERE id = ?').run(policyId);
-  return result.changes > 0;
+export async function deletePolicy(policyId: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('policies').delete().eq('id', policyId);
+    return !error;
+  } else {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM policies WHERE id = ?').run(policyId);
+    return result.changes > 0;
+  }
 }
 
-export function archiveClient(id: string): boolean {
-  const db = getDb();
+export async function archiveClient(id: string): Promise<boolean> {
   const now = new Date().toISOString();
-  const result = db.prepare('UPDATE clients SET archived_at = ?, updated_at = ? WHERE id = ?').run(now, now, id);
-  return result.changes > 0;
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('clients').update({ archived_at: now, updated_at: now }).eq('id', id);
+    return !error;
+  } else {
+    const db = getDb();
+    const result = db.prepare('UPDATE clients SET archived_at = ?, updated_at = ? WHERE id = ?').run(now, now, id);
+    return result.changes > 0;
+  }
 }
 
-export function restoreClient(id: string): boolean {
-  const db = getDb();
+export async function restoreClient(id: string): Promise<boolean> {
   const now = new Date().toISOString();
-  const result = db.prepare('UPDATE clients SET archived_at = NULL, updated_at = ? WHERE id = ?').run(now, id);
-  return result.changes > 0;
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('clients').update({ archived_at: null, updated_at: now }).eq('id', id);
+    return !error;
+  } else {
+    const db = getDb();
+    const result = db.prepare('UPDATE clients SET archived_at = NULL, updated_at = ? WHERE id = ?').run(now, id);
+    return result.changes > 0;
+  }
 }
 
-export function deleteClientPermanently(id: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM clients WHERE id = ?').run(id);
-  return result.changes > 0;
+export async function deleteClientPermanently(id: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    return !error;
+  } else {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM clients WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
 }
 
-export function getDashboardStats(urgencyDaysThreshold: number = 30): DashboardStats {
-  const activeClients = getClients({ status: 'all', urgencyDaysThreshold });
-  const archivedClients = getClients({ status: 'archived', urgencyDaysThreshold });
+export async function getDashboardStats(urgencyDaysThreshold: number = 30): Promise<DashboardStats> {
+  const activeClients = await getClients({ status: 'all', urgencyDaysThreshold });
+  const archivedClients = await getClients({ status: 'archived', urgencyDaysThreshold });
 
   let dueSoonCount = 0;
   let expiredCount = 0;

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   }
 
   const { id } = await params;
-  const client = getClientById(id);
+  const client = await getClientById(id);
   if (!client) {
     return NextResponse.json({ error: 'Client not found' }, { status: 404 });
   }
@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   try {
     const body = await req.json();
-    const updated = updateClientPersonal(id, body);
+    const updated = await updateClientPersonal(id, body);
     if (!updated) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
@@ -52,12 +52,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const { action } = body;
 
     if (action === 'archive') {
-      const success = archiveClient(id);
+      const success = await archiveClient(id);
       return NextResponse.json({ success });
     }
 
     if (action === 'restore') {
-      const success = restoreClient(id);
+      const success = await restoreClient(id);
       return NextResponse.json({ success });
     }
 
@@ -79,10 +79,10 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 
   try {
     if (permanent) {
-      const success = deleteClientPermanently(id);
+      const success = await deleteClientPermanently(id);
       return NextResponse.json({ success, message: 'Client permanently deleted' });
     } else {
-      const success = archiveClient(id);
+      const success = await archiveClient(id);
       return NextResponse.json({ success, message: 'Client archived' });
     }
   } catch (error: any) {

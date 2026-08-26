@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const { action, ...payload } = body;
 
     if (action === 'renew') {
-      const renewed = renewPolicy({
+      const renewed = await renewPolicy({
         policyId: id,
         months: payload.months,
         newTermStartDate: payload.newTermStartDate,
@@ -47,7 +47,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
   try {
-    const success = deletePolicy(id);
+    const success = await deletePolicy(id);
     return NextResponse.json({ success, message: 'Policy removed' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Delete policy failed' }, { status: 500 });
