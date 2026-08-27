@@ -20,27 +20,60 @@ export function isoToDisplay(isoStr: string): string {
   const parts = isoStr.split('-');
   if (parts.length === 3) {
     const [yyyy, mm, dd] = parts;
-    return `${dd}-${mm}-${yyyy}`;
+    if (yyyy.length === 4) {
+      return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy}`;
+    }
   }
   return isoStr;
 }
 
-// Converts 'dd-MM-yyyy' or 'dd/MM/yyyy' to 'yyyy-MM-dd'
+// Converts various manual entries ('11062002', '11-06-2002', '11/06/2002', '11.06.2002', '2002-06-11') to 'yyyy-MM-dd'
 export function displayToIso(displayStr: string): string {
   if (!displayStr) return '';
-  const cleaned = displayStr.replace(/\//g, '-');
-  const parts = cleaned.split('-');
-  if (parts.length === 3) {
-    const [dd, mm, yyyy] = parts;
-    if (yyyy.length === 4 && mm.length <= 2 && dd.length <= 2) {
-      const padMm = mm.padStart(2, '0');
-      const padDd = dd.padStart(2, '0');
-      const isoCandidate = `${yyyy}-${padMm}-${padDd}`;
-      const parsed = parseISO(isoCandidate);
-      if (isValid(parsed)) return isoCandidate;
+
+  const trimmed = displayStr.trim();
+  const digitsOnly = trimmed.replace(/\D/g, '');
+
+  // 1. Handle 8 unformatted digits: DDMMYYYY (e.g. '11062002' -> '2002-06-11')
+  if (digitsOnly.length === 8) {
+    const dd = digitsOnly.slice(0, 2);
+    const mm = digitsOnly.slice(2, 4);
+    const yyyy = digitsOnly.slice(4, 8);
+    const dayNum = parseInt(dd, 10);
+    const monthNum = parseInt(mm, 10);
+    const yearNum = parseInt(yyyy, 10);
+
+    if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12 && yearNum >= 1900 && yearNum <= 2100) {
+      const candidate = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+      if (isValid(parseISO(candidate))) return candidate;
     }
   }
-  return displayStr;
+
+  // 2. Handle delimiters: '-', '/', '.'
+  const cleaned = trimmed.replace(/[\/\.]/g, '-');
+  const parts = cleaned.split('-').filter(Boolean);
+
+  if (parts.length === 3) {
+    const [p1, p2, p3] = parts;
+    // Format: DD-MM-YYYY
+    if (p3.length === 4 && p1.length <= 2 && p2.length <= 2) {
+      const dd = p1.padStart(2, '0');
+      const mm = p2.padStart(2, '0');
+      const yyyy = p3;
+      const candidate = `${yyyy}-${mm}-${dd}`;
+      if (isValid(parseISO(candidate))) return candidate;
+    }
+    // Format: YYYY-MM-DD
+    if (p1.length === 4 && p2.length <= 2 && p3.length <= 2) {
+      const yyyy = p1;
+      const mm = p2.padStart(2, '0');
+      const dd = p3.padStart(2, '0');
+      const candidate = `${yyyy}-${mm}-${dd}`;
+      if (isValid(parseISO(candidate))) return candidate;
+    }
+  }
+
+  return '';
 }
 
 export function CustomDateInput({
@@ -63,20 +96,20 @@ export function CustomDateInput({
     const raw = e.target.value;
     setDisplayText(raw);
 
-    // If user types complete dd-MM-yyyy (e.g. 27-08-2026 or 27082026)
     const iso = displayToIso(raw);
-    if (iso && iso.length === 10 && iso.split('-')[0].length === 4) {
+    if (iso) {
       onChange(iso);
     }
   };
 
   const handleBlur = () => {
     const iso = displayToIso(displayText);
-    if (iso && iso.length === 10 && iso.split('-')[0].length === 4) {
+    if (iso) {
       onChange(iso);
       setDisplayText(isoToDisplay(iso));
     } else if (!displayText.trim()) {
       onChange('');
+      setDisplayText('');
     }
   };
 
@@ -131,10 +164,12 @@ export function CustomDateInput({
           }}
         />
 
-        {/* Hidden Native Picker Overlay Trigger */}
+        {/* Hidden Native Picker Overlay Trigger - Excluded from Tab Order */}
         <input
           ref={datePickerRef}
           type="date"
+          tabIndex={-1}
+          aria-hidden="true"
           value={value || ''}
           min={min}
           max={max}
@@ -153,6 +188,8 @@ export function CustomDateInput({
 
         <button
           type="button"
+          tabIndex={-1}
+          aria-hidden="true"
           onClick={openCalendar}
           style={{
             position: 'absolute',
