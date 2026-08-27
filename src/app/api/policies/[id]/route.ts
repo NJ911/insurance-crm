@@ -33,6 +33,15 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ policy: renewed, success: true });
     }
 
+    if (action === 'update') {
+      const { updatePolicyDetails } = await import('@/lib/storage');
+      const updated = await updatePolicyDetails(id, payload);
+      if (!updated) {
+        return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+      }
+      return NextResponse.json({ policy: updated, success: true });
+    }
+
     return NextResponse.json({ error: 'Invalid patch action' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Action failed' }, { status: 500 });

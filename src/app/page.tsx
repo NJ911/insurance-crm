@@ -17,6 +17,7 @@ import { ClientTable } from '@/components/ClientTable';
 import { ClientModal } from '@/components/ClientModal';
 import { AddPolicyModal } from '@/components/AddPolicyModal';
 import { RenewModal } from '@/components/RenewModal';
+import { EditPolicyModal } from '@/components/EditPolicyModal';
 import { ClientDetailDrawer } from '@/components/ClientDetailDrawer';
 import { AuthScreen } from '@/components/AuthScreen';
 import { useToast } from '@/components/Toast';
@@ -61,6 +62,9 @@ export default function DashboardPage() {
 
   const [renewingClientId, setRenewingClientId] = useState<string | null>(null);
   const [renewingPolicy, setRenewingPolicy] = useState<Policy | null>(null);
+
+  const [editingPolicyClientId, setEditingPolicyClientId] = useState<string | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
   const [inspectingClientId, setInspectingClientId] = useState<string | null>(null);
 
@@ -159,6 +163,11 @@ export default function DashboardPage() {
     if (!renewingClientId) return null;
     return clients.find(c => c.id === renewingClientId) || null;
   }, [renewingClientId, clients]);
+
+  const editingPolicyClient = useMemo(() => {
+    if (!editingPolicyClientId) return null;
+    return clients.find(c => c.id === editingPolicyClientId) || null;
+  }, [editingPolicyClientId, clients]);
 
   // Handle Save New Client + Policy
   const handleSaveClient = async (formData: ClientCreatePayload): Promise<boolean> => {
@@ -274,6 +283,35 @@ export default function DashboardPage() {
       }
     } catch (e) {
       showToast('Error executing renewal', 'error');
+      return false;
+    }
+  };
+
+  // Handle Update Policy Details & Dates
+  const handleUpdatePolicy = async (policyId: string, updatedData: Partial<Policy>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/policies/${policyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          ...updatedData
+        })
+      });
+
+      if (res.ok) {
+        showToast('Policy details & dates updated successfully!', 'success');
+        setEditingPolicyClientId(null);
+        setEditingPolicy(null);
+        fetchClients();
+        return true;
+      } else {
+        const err = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+        showToast(err.error || 'Failed to update policy', 'error');
+        return false;
+      }
+    } catch (e: any) {
+      showToast(e?.message || 'Error updating policy', 'error');
       return false;
     }
   };
@@ -485,6 +523,18 @@ export default function DashboardPage() {
         onConfirmRenewal={handleConfirmRenewal}
       />
 
+      {/* Edit Policy Details & Dates Modal */}
+      <EditPolicyModal
+        isOpen={Boolean(editingPolicy && editingPolicyClient)}
+        onClose={() => {
+          setEditingPolicy(null);
+          setEditingPolicyClientId(null);
+        }}
+        client={editingPolicyClient}
+        policy={editingPolicy}
+        onSave={handleUpdatePolicy}
+      />
+
       {/* Client Detail Dossier Drawer (With working Close & Escape) */}
       <ClientDetailDrawer
         isOpen={Boolean(inspectingClient)}
@@ -493,6 +543,10 @@ export default function DashboardPage() {
         onOpenRenewModal={(c, p) => {
           setRenewingClientId(c.id);
           setRenewingPolicy(p);
+        }}
+        onOpenEditPolicyModal={(c, p) => {
+          setEditingPolicyClientId(c.id);
+          setEditingPolicy(p);
         }}
         onOpenEditModal={(c) => {
           setEditingClientId(c.id);

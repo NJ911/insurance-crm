@@ -13,6 +13,7 @@ import {
   Shield,
   RefreshCw,
   Edit,
+  Pencil,
   Archive,
   RotateCcw,
   Copy,
@@ -33,6 +34,7 @@ interface ClientDetailDrawerProps {
   onClose: () => void;
   client: Client | null;
   onOpenRenewModal: (client: Client, policy: Policy) => void;
+  onOpenEditPolicyModal?: (client: Client, policy: Policy) => void;
   onOpenEditModal: (client: Client) => void;
   onOpenAddPolicyModal: (client: Client) => void;
   onArchiveClient: (id: string) => void;
@@ -45,6 +47,7 @@ export function ClientDetailDrawer({
   onClose,
   client,
   onOpenRenewModal,
+  onOpenEditPolicyModal,
   onOpenEditModal,
   onOpenAddPolicyModal,
   onArchiveClient,
@@ -321,14 +324,27 @@ export function ClientDetailDrawer({
                       )}
 
                       {!isArchived && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenRenewModal(client, p)}
-                          className="btn btn-sm btn-primary"
-                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-                        >
-                          <RefreshCw size={12} /> Renew
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          {onOpenEditPolicyModal && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenEditPolicyModal(client, p)}
+                              className="btn btn-sm btn-secondary"
+                              style={{ padding: '0.25rem 0.55rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                              title="Edit policy dates and details"
+                            >
+                              <Pencil size={12} /> Edit Policy
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => onOpenRenewModal(client, p)}
+                            className="btn btn-sm btn-primary"
+                            style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                          >
+                            <RefreshCw size={12} /> Renew
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

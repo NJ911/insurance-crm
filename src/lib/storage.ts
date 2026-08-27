@@ -452,6 +452,71 @@ export async function updateClientPersonal(id: string, data: Partial<Client>): P
   return getClientById(id);
 }
 
+export async function updatePolicyDetails(policyId: string, data: Partial<Policy>): Promise<Policy | null> {
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured && supabase) {
+    const updatePayload: any = { updated_at: now };
+    if (data.policyType) updatePayload.policy_type = data.policyType;
+    if (data.policyNumber !== undefined) updatePayload.policy_number = data.policyNumber?.trim() || null;
+    if (data.plateNumber !== undefined) updatePayload.plate_number = data.plateNumber?.trim().toUpperCase() || null;
+    if (data.vehicleMakeModel !== undefined) updatePayload.vehicle_make_model = data.vehicleMakeModel?.trim() || null;
+    if (data.propertyAddress !== undefined) updatePayload.property_address = data.propertyAddress?.trim() || null;
+    if (data.propertyType !== undefined) updatePayload.property_type = data.propertyType?.trim() || null;
+    if (data.businessName !== undefined) updatePayload.business_name = data.businessName?.trim() || null;
+    if (data.businessType !== undefined) updatePayload.business_type = data.businessType?.trim() || null;
+    if (data.termStartDate) updatePayload.term_start_date = data.termStartDate;
+    if (data.renewalDate) updatePayload.renewal_date = data.renewalDate;
+    if (data.expiryDate) updatePayload.expiry_date = data.expiryDate;
+    if (data.notes !== undefined) updatePayload.notes = data.notes?.trim() || null;
+
+    const { data: updatedData, error } = await supabase.from('policies').update(updatePayload).eq('id', policyId).select().single();
+
+    if (error) throw new Error(error.message);
+    return mapRowToPolicy(updatedData);
+  } else {
+    const db = getDb();
+    const existing = db.prepare('SELECT * FROM policies WHERE id = ?').get(policyId);
+    if (!existing) return null;
+
+    db.prepare(`
+      UPDATE policies SET
+        policy_type = COALESCE(?, policy_type),
+        policy_number = ?,
+        plate_number = ?,
+        vehicle_make_model = ?,
+        property_address = ?,
+        property_type = ?,
+        business_name = ?,
+        business_type = ?,
+        term_start_date = COALESCE(?, term_start_date),
+        renewal_date = COALESCE(?, renewal_date),
+        expiry_date = COALESCE(?, expiry_date),
+        notes = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      data.policyType || null,
+      data.policyNumber !== undefined ? (data.policyNumber?.trim() || null) : existing.policy_number,
+      data.plateNumber !== undefined ? (data.plateNumber?.trim().toUpperCase() || null) : existing.plate_number,
+      data.vehicleMakeModel !== undefined ? (data.vehicleMakeModel?.trim() || null) : existing.vehicle_make_model,
+      data.propertyAddress !== undefined ? (data.propertyAddress?.trim() || null) : existing.property_address,
+      data.propertyType !== undefined ? (data.propertyType?.trim() || null) : existing.property_type,
+      data.businessName !== undefined ? (data.businessName?.trim() || null) : existing.business_name,
+      data.businessType !== undefined ? (data.businessType?.trim() || null) : existing.business_type,
+      data.termStartDate || null,
+      data.renewalDate || null,
+      data.expiryDate || null,
+      data.notes !== undefined ? (data.notes?.trim() || null) : existing.notes,
+      now,
+      policyId
+    );
+
+    const row = db.prepare('SELECT * FROM policies WHERE id = ?').get(policyId);
+    return mapRowToPolicy(row);
+  }
+}
+
 export async function renewPolicy(payload: RenewalPayload): Promise<Policy | null> {
   let row: any = null;
   const now = new Date().toISOString();

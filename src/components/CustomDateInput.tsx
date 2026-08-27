@@ -12,6 +12,7 @@ interface CustomDateInputProps {
   error?: string;
   min?: string;
   max?: string;
+  className?: string;
 }
 
 // Converts 'yyyy-MM-dd' to 'dd-MM-yyyy'
@@ -83,7 +84,8 @@ export function CustomDateInput({
   required,
   error,
   min,
-  max
+  max,
+  className
 }: CustomDateInputProps) {
   const [displayText, setDisplayText] = useState(isoToDisplay(value));
   const datePickerRef = useRef<HTMLInputElement>(null);
@@ -122,14 +124,10 @@ export function CustomDateInput({
   };
 
   const openCalendar = () => {
-    const el: any = datePickerRef.current;
-    if (el) {
+    if (datePickerRef.current) {
+      const el: any = datePickerRef.current;
       if (typeof el.showPicker === 'function') {
-        try {
-          el.showPicker();
-        } catch (err) {
-          el.focus?.();
-        }
+        el.showPicker();
       } else {
         el.focus?.();
       }
@@ -151,6 +149,7 @@ export function CustomDateInput({
           value={displayText}
           onChange={handleTextChange}
           onBlur={handleBlur}
+          className={className}
           style={{
             width: '100%',
             padding: '0.55rem 2.25rem 0.55rem 0.75rem',
