@@ -89,15 +89,16 @@ export function CustomDateInput({
   };
 
   const openCalendar = () => {
-    if (datePickerRef.current) {
-      if ('showPicker' in datePickerRef.current) {
+    const el = datePickerRef.current as HTMLInputElement | null;
+    if (el) {
+      if ('showPicker' in el) {
         try {
-          (datePickerRef.current as any).showPicker();
+          (el as any).showPicker();
         } catch (err) {
-          datePickerRef.current.focus();
+          el.focus();
         }
       } else {
-        datePickerRef.current.focus();
+        el.focus();
       }
     }
   };
