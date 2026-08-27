@@ -1,5 +1,9 @@
-import { getDb } from './db';
 import { supabase, isSupabaseConfigured } from './supabase';
+
+function getDb() {
+  const { getDb: loadDb } = require('./db');
+  return loadDb();
+}
 import {
   Client,
   Policy,
