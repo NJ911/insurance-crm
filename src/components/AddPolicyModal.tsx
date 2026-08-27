@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Client, PolicyType, PolicyCreatePayload } from '@/lib/types';
-import { X, Car, Home, Building2, Shield, Plus } from 'lucide-react';
+import { X, Car, Home, Building2 } from 'lucide-react';
 import { format, addMonths, subDays } from 'date-fns';
 import { CustomDateInput } from './CustomDateInput';
 
@@ -45,10 +45,6 @@ export function AddPolicyModal({
 
   useEffect(() => {
     if (isOpen) {
-      const today = new Date();
-      const oneYearOut = addMonths(today, 12);
-      const renew = subDays(oneYearOut, 30);
-
       setPolicyType('auto');
       setPolicyNumber('');
       setPlateNumber('');
@@ -57,9 +53,9 @@ export function AddPolicyModal({
       setPropertyType('Single Family Home');
       setBusinessName('');
       setBusinessType('General Liability');
-      setTermStartDate(format(today, 'yyyy-MM-dd'));
-      setRenewalDate(format(renew, 'yyyy-MM-dd'));
-      setExpiryDate(format(oneYearOut, 'yyyy-MM-dd'));
+      setTermStartDate('');
+      setRenewalDate('');
+      setExpiryDate('');
       setNotes('');
       setErrors({});
     }
@@ -123,8 +119,11 @@ export function AddPolicyModal({
 
   const handleQuickDuration = (months: number) => {
     try {
-      const start = new Date(termStartDate || Date.now());
-      const newExpiry = addMonths(start, months);
+      const baseStart = termStartDate ? new Date(termStartDate) : new Date();
+      if (!termStartDate) {
+        setTermStartDate(format(baseStart, 'yyyy-MM-dd'));
+      }
+      const newExpiry = addMonths(baseStart, months);
       const newRenewal = subDays(newExpiry, 30);
       setExpiryDate(format(newExpiry, 'yyyy-MM-dd'));
       setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
@@ -398,7 +397,7 @@ export function AddPolicyModal({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               <CustomDateInput
-                label="Term Start (DD-MM-YYYY)"
+                label="Term Start"
                 required
                 value={termStartDate}
                 onChange={setTermStartDate}
@@ -406,7 +405,7 @@ export function AddPolicyModal({
               />
 
               <CustomDateInput
-                label="Renewal Target (DD-MM-YYYY)"
+                label="Renewal Target"
                 required
                 value={renewalDate}
                 onChange={setRenewalDate}
@@ -414,7 +413,7 @@ export function AddPolicyModal({
               />
 
               <CustomDateInput
-                label="Expiry Date (DD-MM-YYYY)"
+                label="Expiry Date"
                 required
                 value={expiryDate}
                 onChange={setExpiryDate}

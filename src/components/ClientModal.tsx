@@ -59,10 +59,6 @@ export function ClientModal({
       setEmail(editingClient.email || '');
       setNotes(editingClient.notes || '');
     } else {
-      const today = new Date();
-      const oneYearOut = addMonths(today, 12);
-      const renew = subDays(oneYearOut, 30);
-
       setFirstName('');
       setLastName('');
       setDateOfBirth('');
@@ -79,9 +75,9 @@ export function ClientModal({
       setPropertyType('Single Family Home');
       setBusinessName('');
       setBusinessType('General Liability');
-      setTermStartDate(format(today, 'yyyy-MM-dd'));
-      setRenewalDate(format(renew, 'yyyy-MM-dd'));
-      setExpiryDate(format(oneYearOut, 'yyyy-MM-dd'));
+      setTermStartDate('');
+      setRenewalDate('');
+      setExpiryDate('');
       setPolicyNotes('');
     }
     setErrors({});
@@ -179,8 +175,11 @@ export function ClientModal({
 
   const handleQuickDuration = (months: number) => {
     try {
-      const start = new Date(termStartDate || Date.now());
-      const newExpiry = addMonths(start, months);
+      const baseStart = termStartDate ? new Date(termStartDate) : new Date();
+      if (!termStartDate) {
+        setTermStartDate(format(baseStart, 'yyyy-MM-dd'));
+      }
+      const newExpiry = addMonths(baseStart, months);
       const newRenewal = subDays(newExpiry, 30);
       setExpiryDate(format(newExpiry, 'yyyy-MM-dd'));
       setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
@@ -289,7 +288,7 @@ export function ClientModal({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <CustomDateInput
-                label="Date of Birth (DD-MM-YYYY)"
+                label="Date of Birth"
                 required
                 value={dateOfBirth}
                 onChange={setDateOfBirth}
@@ -599,7 +598,7 @@ export function ClientModal({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
                   <CustomDateInput
-                    label="Term Start (DD-MM-YYYY)"
+                    label="Term Start"
                     required
                     value={termStartDate}
                     onChange={setTermStartDate}
@@ -607,7 +606,7 @@ export function ClientModal({
                   />
 
                   <CustomDateInput
-                    label="Renewal Target (DD-MM-YYYY)"
+                    label="Renewal Target"
                     required
                     value={renewalDate}
                     onChange={setRenewalDate}
@@ -615,7 +614,7 @@ export function ClientModal({
                   />
 
                   <CustomDateInput
-                    label="Expiry Date (DD-MM-YYYY)"
+                    label="Expiry Date"
                     required
                     value={expiryDate}
                     onChange={setExpiryDate}
