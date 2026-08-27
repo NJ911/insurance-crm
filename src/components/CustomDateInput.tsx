@@ -89,16 +89,16 @@ export function CustomDateInput({
   };
 
   const openCalendar = () => {
-    const el = datePickerRef.current as HTMLInputElement | null;
+    const el: any = datePickerRef.current;
     if (el) {
-      if ('showPicker' in el) {
+      if (typeof el.showPicker === 'function') {
         try {
-          (el as any).showPicker();
+          el.showPicker();
         } catch (err) {
-          el.focus();
+          el.focus?.();
         }
       } else {
-        el.focus();
+        el.focus?.();
       }
     }
   };
