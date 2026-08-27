@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
   const [inspectingClientId, setInspectingClientId] = useState<string | null>(null);
+  const [returnToClientId, setReturnToClientId] = useState<string | null>(null);
 
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -208,6 +209,10 @@ export default function DashboardPage() {
       if (res.ok) {
         showToast('Client personal information updated!', 'success');
         setEditingClientId(null);
+        if (returnToClientId) {
+          setInspectingClientId(returnToClientId);
+          setReturnToClientId(null);
+        }
         fetchClients();
         return true;
       } else if (res.status === 401) {
@@ -238,6 +243,10 @@ export default function DashboardPage() {
         showToast(`${payload.policyType.toUpperCase()} policy added to client!`, 'success');
         setIsAddPolicyModalOpen(false);
         setAddingPolicyClientId(null);
+        if (returnToClientId) {
+          setInspectingClientId(returnToClientId);
+          setReturnToClientId(null);
+        }
         fetchClients();
         return true;
       } else {
@@ -274,6 +283,10 @@ export default function DashboardPage() {
         showToast(`Policy successfully renewed for ${payload.months} months!`, 'success');
         setRenewingClientId(null);
         setRenewingPolicy(null);
+        if (returnToClientId) {
+          setInspectingClientId(returnToClientId);
+          setReturnToClientId(null);
+        }
         fetchClients();
         return true;
       } else {
@@ -303,6 +316,10 @@ export default function DashboardPage() {
         showToast('Policy details & dates updated successfully!', 'success');
         setEditingPolicyClientId(null);
         setEditingPolicy(null);
+        if (returnToClientId) {
+          setInspectingClientId(returnToClientId);
+          setReturnToClientId(null);
+        }
         fetchClients();
         return true;
       } else {
@@ -494,6 +511,10 @@ export default function DashboardPage() {
         onClose={() => {
           setIsAddModalOpen(false);
           setEditingClientId(null);
+          if (returnToClientId) {
+            setInspectingClientId(returnToClientId);
+            setReturnToClientId(null);
+          }
         }}
         onSave={handleSaveClient}
         editingClient={editingClient}
@@ -506,6 +527,10 @@ export default function DashboardPage() {
         onClose={() => {
           setIsAddPolicyModalOpen(false);
           setAddingPolicyClientId(null);
+          if (returnToClientId) {
+            setInspectingClientId(returnToClientId);
+            setReturnToClientId(null);
+          }
         }}
         client={addingPolicyClient}
         onSavePolicy={handleSavePolicy}
@@ -517,6 +542,10 @@ export default function DashboardPage() {
         onClose={() => {
           setRenewingPolicy(null);
           setRenewingClientId(null);
+          if (returnToClientId) {
+            setInspectingClientId(returnToClientId);
+            setReturnToClientId(null);
+          }
         }}
         client={renewingClient}
         policy={renewingPolicy}
@@ -529,6 +558,10 @@ export default function DashboardPage() {
         onClose={() => {
           setEditingPolicy(null);
           setEditingPolicyClientId(null);
+          if (returnToClientId) {
+            setInspectingClientId(returnToClientId);
+            setReturnToClientId(null);
+          }
         }}
         client={editingPolicyClient}
         policy={editingPolicy}
@@ -538,21 +571,32 @@ export default function DashboardPage() {
       {/* Client Detail Dossier Drawer (With working Close & Escape) */}
       <ClientDetailDrawer
         isOpen={Boolean(inspectingClient)}
-        onClose={() => setInspectingClientId(null)}
+        onClose={() => {
+          setInspectingClientId(null);
+          setReturnToClientId(null);
+        }}
         client={inspectingClient}
         onOpenRenewModal={(c, p) => {
+          setReturnToClientId(c.id);
+          setInspectingClientId(null);
           setRenewingClientId(c.id);
           setRenewingPolicy(p);
         }}
         onOpenEditPolicyModal={(c, p) => {
+          setReturnToClientId(c.id);
+          setInspectingClientId(null);
           setEditingPolicyClientId(c.id);
           setEditingPolicy(p);
         }}
         onOpenEditModal={(c) => {
+          setReturnToClientId(c.id);
+          setInspectingClientId(null);
           setEditingClientId(c.id);
           setIsAddModalOpen(true);
         }}
         onOpenAddPolicyModal={(c) => {
+          setReturnToClientId(c.id);
+          setInspectingClientId(null);
           setAddingPolicyClientId(c.id);
           setIsAddPolicyModalOpen(true);
         }}
