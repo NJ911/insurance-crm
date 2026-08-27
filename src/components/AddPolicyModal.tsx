@@ -20,7 +20,7 @@ export function AddPolicyModal({
 }: AddPolicyModalProps) {
   const [policyType, setPolicyType] = useState<PolicyType>('auto');
   const [policyNumber, setPolicyNumber] = useState('');
-  
+
   // Auto fields
   const [plateNumber, setPlateNumber] = useState('');
   const [vehicleMakeModel, setVehicleMakeModel] = useState('');
@@ -155,6 +155,7 @@ export function AddPolicyModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="btn btn-ghost btn-icon"
             style={{ borderRadius: 'var(--radius-full)' }}
@@ -212,7 +213,7 @@ export function AddPolicyModal({
             </label>
             <input
               type="text"
-              placeholder="e.g. AUT-99214, HOM-10482, CGL-55102"
+              placeholder="Policy Number"
               value={policyNumber}
               onChange={(e) => setPolicyNumber(e.target.value)}
               style={{
@@ -236,7 +237,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 7XYZ892"
+                  placeholder="Plate Number"
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                   style={{
@@ -259,7 +260,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 2022 Honda CR-V (Silver)"
+                  placeholder="Make and Model"
                   value={vehicleMakeModel}
                   onChange={(e) => setVehicleMakeModel(e.target.value)}
                   style={{
@@ -284,7 +285,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 742 Evergreen Terrace, Springfield"
+                  placeholder="Property Address"
                   value={propertyAddress}
                   onChange={(e) => setPropertyAddress(e.target.value)}
                   style={{
@@ -305,7 +306,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Single Family / Condo"
+                  placeholder="Property Type"
                   value={propertyType}
                   onChange={(e) => setPropertyType(e.target.value)}
                   style={{
@@ -330,7 +331,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Acme Contracting LLC"
+                  placeholder="Business Name"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
                   style={{
@@ -351,7 +352,7 @@ export function AddPolicyModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. General Liability $2M"
+                  placeholder="Coverage Type"
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
                   style={{
@@ -461,7 +462,7 @@ export function AddPolicyModal({
             </label>
             <input
               type="text"
-              placeholder="Coverages, deductibles, carrier name, or client preference..."
+              placeholder="Coverages, deductibles, carrier name..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               style={{

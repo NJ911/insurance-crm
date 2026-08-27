@@ -27,7 +27,8 @@ import {
   Edit,
   Plus,
   ChevronRight,
-  Layers
+  Layers,
+  Users
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -95,12 +96,12 @@ export function ClientTable({
   ];
 
   const filterTabs = [
-    { id: 'all', label: 'All Clients' },
-    { id: 'due_soon', label: '⚡ Due Soon' },
-    { id: 'this_month', label: '🗓️ This Month' },
-    { id: 'expired', label: '⚠️ Expired' },
-    { id: 'active', label: '✅ Active' },
-    { id: 'archived', label: '📦 Archived' }
+    { id: 'all', label: 'All Clients', icon: Users, color: 'var(--text-primary)' },
+    { id: 'due_soon', label: 'Due Soon', icon: Clock, color: 'var(--status-due-text)' },
+    { id: 'this_month', label: 'This Month', icon: Calendar, color: 'var(--brand-primary)' },
+    { id: 'expired', label: 'Expired', icon: AlertCircle, color: 'var(--status-expired-text)' },
+    { id: 'active', label: 'Active', icon: CheckCircle2, color: '#10b981' },
+    { id: 'archived', label: 'Archived', icon: Archive, color: 'var(--text-muted)' }
   ];
 
   const maskDl = (dl?: string) => {
@@ -200,16 +201,20 @@ export function ClientTable({
         background: 'var(--bg-surface-subtle)'
       }}>
         {/* Status Pills */}
-        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {filterTabs.map(tab => {
             const active = currentFilter === tab.id;
+            const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => onSelectFilter(tab.id as any)}
                 style={{
-                  padding: '0.3rem 0.65rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.35rem 0.75rem',
                   borderRadius: 'var(--radius-full)',
                   fontSize: '0.75rem',
                   fontWeight: 600,
@@ -220,7 +225,8 @@ export function ClientTable({
                   transition: 'all var(--transition-fast)'
                 }}
               >
-                {tab.label}
+                <Icon size={13} style={{ color: active ? '#ffffff' : tab.color }} />
+                <span>{tab.label}</span>
               </button>
             );
           })}

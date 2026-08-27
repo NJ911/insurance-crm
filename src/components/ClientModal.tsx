@@ -215,6 +215,7 @@ export function ClientModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="btn btn-ghost btn-icon"
             style={{ borderRadius: 'var(--radius-full)' }}
@@ -248,7 +249,7 @@ export function ClientModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. John"
+                  placeholder="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   style={{
@@ -269,7 +270,7 @@ export function ClientModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Smith"
+                  placeholder="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   style={{
@@ -288,7 +289,7 @@ export function ClientModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+                  Date of Birth (DD-MM-YYYY) <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="date"
@@ -312,7 +313,7 @@ export function ClientModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. D1234-5678-9012"
+                  placeholder="XXXXXXXX"
                   value={dlNumber}
                   onChange={(e) => setDlNumber(e.target.value.toUpperCase())}
                   style={{
@@ -336,7 +337,7 @@ export function ClientModal({
                 </label>
                 <input
                   type="tel"
-                  placeholder="e.g. (555) 123-4567"
+                  placeholder="Phone Number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   style={{
@@ -356,7 +357,7 @@ export function ClientModal({
                 </label>
                 <input
                   type="email"
-                  placeholder="e.g. client@example.com"
+                  placeholder="Email Address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{
@@ -377,7 +378,7 @@ export function ClientModal({
               </label>
               <textarea
                 rows={2}
-                placeholder="General client notes, communication preferences..."
+                placeholder="Client notes, communication preferences..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 style={{
@@ -454,7 +455,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. 7XYZ892"
+                      placeholder="Plate Number"
                       value={plateNumber}
                       onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                       style={{
@@ -476,7 +477,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. 2022 Honda CR-V (Silver)"
+                      placeholder="Make and Model"
                       value={vehicleMakeModel}
                       onChange={(e) => setVehicleMakeModel(e.target.value)}
                       style={{
@@ -500,7 +501,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. 742 Evergreen Terrace, Springfield"
+                      placeholder="Property Address"
                       value={propertyAddress}
                       onChange={(e) => setPropertyAddress(e.target.value)}
                       style={{
@@ -520,7 +521,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Single Family / Condo"
+                      placeholder="Property Type"
                       value={propertyType}
                       onChange={(e) => setPropertyType(e.target.value)}
                       style={{
@@ -544,7 +545,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Vance Contracting LLC"
+                      placeholder="Business Name"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       style={{
@@ -564,7 +565,7 @@ export function ClientModal({
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. General Liability $2M"
+                      placeholder="Coverage Type"
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value)}
                       style={{
