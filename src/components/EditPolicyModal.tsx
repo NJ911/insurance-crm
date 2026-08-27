@@ -38,7 +38,7 @@ export function EditPolicyModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (policy) {
+    if (policy && isOpen) {
       setPolicyType(policy.policyType);
       setPolicyNumber(policy.policyNumber || '');
       setPlateNumber(policy.plateNumber || '');
@@ -130,7 +130,7 @@ export function EditPolicyModal({
       <div
         className="modal-content scale-in"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '640px', width: '90vw' }}
+        style={{ maxWidth: '640px', width: '92vw' }}
       >
         {/* Modal Header */}
         <div style={{
@@ -149,7 +149,12 @@ export function EditPolicyModal({
               Updating policy for <strong style={{ color: 'var(--text-primary)' }}>{client.firstName} {client.lastName}</strong>
             </p>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-secondary btn-icon">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-secondary btn-icon"
+            style={{ borderRadius: 'var(--radius-full)', padding: '0.45rem' }}
+          >
             <X size={18} />
           </button>
         </div>
@@ -157,10 +162,10 @@ export function EditPolicyModal({
         {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Policy Type Display */}
+            {/* Policy Type Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Policy Type:</span>
-              <span className="badge badge-active" style={{ textTransform: 'uppercase', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Policy Product:</span>
+              <span className="badge badge-active" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: '0.75rem' }}>
                 {policyType === 'auto' && <Car size={13} style={{ marginRight: '0.25rem' }} />}
                 {policyType === 'home' && <Home size={13} style={{ marginRight: '0.25rem' }} />}
                 {policyType === 'commercial' && <Building2 size={13} style={{ marginRight: '0.25rem' }} />}
@@ -168,102 +173,170 @@ export function EditPolicyModal({
               </span>
             </div>
 
-            {/* Dynamic Specific Fields */}
+            {/* Auto Specific Fields */}
             {policyType === 'auto' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="form-label required">Plate #</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Plate # <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="text"
                     value={plateNumber}
                     onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                     placeholder="e.g. A374NB"
-                    className={`form-input ${errors.plateNumber ? 'input-error' : ''}`}
-                    style={{ textTransform: 'uppercase' }}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: errors.plateNumber ? '1px solid #ef4444' : '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      outline: 'none'
+                    }}
                   />
-                  {errors.plateNumber && <span className="field-error">{errors.plateNumber}</span>}
+                  {errors.plateNumber && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.plateNumber}</span>}
                 </div>
 
                 <div>
-                  <label className="form-label">Vehicle Make & Model</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Vehicle Make & Model
+                  </label>
                   <input
                     type="text"
                     value={vehicleMakeModel}
                     onChange={(e) => setVehicleMakeModel(e.target.value)}
                     placeholder="e.g. 2008 Lexus RX350"
-                    className="form-input"
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      outline: 'none'
+                    }}
                   />
                 </div>
               </div>
             )}
 
+            {/* Home Specific Fields */}
             {policyType === 'home' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="form-label required">Property Address</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Property Address <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="text"
                     value={propertyAddress}
                     onChange={(e) => setPropertyAddress(e.target.value)}
                     placeholder="e.g. 742 Evergreen Terrace"
-                    className={`form-input ${errors.propertyAddress ? 'input-error' : ''}`}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: errors.propertyAddress ? '1px solid #ef4444' : '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      outline: 'none'
+                    }}
                   />
-                  {errors.propertyAddress && <span className="field-error">{errors.propertyAddress}</span>}
+                  {errors.propertyAddress && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.propertyAddress}</span>}
                 </div>
 
                 <div>
-                  <label className="form-label">Property Type</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Property Type
+                  </label>
                   <input
                     type="text"
                     value={propertyType}
                     onChange={(e) => setPropertyType(e.target.value)}
                     placeholder="Single Family / Condo"
-                    className="form-input"
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      outline: 'none'
+                    }}
                   />
                 </div>
               </div>
             )}
 
+            {/* Commercial Specific Fields */}
             {policyType === 'commercial' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="form-label required">Business Name</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Business Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="text"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="e.g. Acme Contracting LLC"
-                    className={`form-input ${errors.businessName ? 'input-error' : ''}`}
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: errors.businessName ? '1px solid #ef4444' : '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      outline: 'none'
+                    }}
                   />
-                  {errors.businessName && <span className="field-error">{errors.businessName}</span>}
+                  {errors.businessName && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.businessName}</span>}
                 </div>
 
                 <div>
-                  <label className="form-label">Business / Coverage Type</label>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Business / Coverage Type
+                  </label>
                   <input
                     type="text"
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value)}
                     placeholder="General Liability / BOP"
-                    className="form-input"
+                    style={{
+                      width: '100%',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-input)',
+                      outline: 'none'
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {/* Policy Number */}
+            {/* Optional Policy Reference Number */}
             <div>
-              <label className="form-label">Policy Number</label>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                Policy Number <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
+              </label>
               <input
                 type="text"
                 value={policyNumber}
                 onChange={(e) => setPolicyNumber(e.target.value)}
                 placeholder="Optional policy reference #"
-                className="form-input"
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--bg-input)',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  outline: 'none'
+                }}
               />
             </div>
 
-            {/* Term Dates Header + Quick Presets */}
+            {/* Term Dates Card + Quick Presets */}
             <div style={{
               background: 'var(--bg-surface-subtle)',
               border: '1px solid var(--border-subtle)',
@@ -283,50 +356,67 @@ export function EditPolicyModal({
                 </div>
               </div>
 
-              {/* 3 Custom Date Inputs */}
+              {/* 3 Custom Date Inputs in 3 Columns */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                 <div>
-                  <label className="form-label required" style={{ fontSize: '0.75rem' }}>Term Start</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Term Start <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <CustomDateInput
                     value={termStartDate}
                     onChange={setTermStartDate}
-                    className={errors.termStartDate ? 'input-error' : ''}
+                    error={errors.termStartDate}
                   />
-                  {errors.termStartDate && <span className="field-error">{errors.termStartDate}</span>}
+                  {errors.termStartDate && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.termStartDate}</span>}
                 </div>
 
                 <div>
-                  <label className="form-label required" style={{ fontSize: '0.75rem' }}>Renewal Target</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Renewal Target <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <CustomDateInput
                     value={renewalDate}
                     onChange={setRenewalDate}
-                    className={errors.renewalDate ? 'input-error' : ''}
+                    error={errors.renewalDate}
                   />
-                  {errors.renewalDate && <span className="field-error">{errors.renewalDate}</span>}
+                  {errors.renewalDate && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.renewalDate}</span>}
                 </div>
 
                 <div>
-                  <label className="form-label required" style={{ fontSize: '0.75rem' }}>Expiry Date</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    Expiry Date <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <CustomDateInput
                     value={expiryDate}
                     onChange={setExpiryDate}
-                    className={errors.expiryDate ? 'input-error' : ''}
+                    error={errors.expiryDate}
                   />
-                  {errors.expiryDate && <span className="field-error">{errors.expiryDate}</span>}
+                  {errors.expiryDate && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.expiryDate}</span>}
                 </div>
               </div>
             </div>
 
             {/* Policy Notes */}
             <div>
-              <label className="form-label">Policy Notes</label>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                Policy Notes <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
+              </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Endorsements, discounts, special instructions..."
-                rows={2}
-                className="form-input"
-                style={{ resize: 'vertical' }}
+                placeholder="Endorsements, discounts, special coverage instructions..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--bg-input)',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  fontSize: '0.875rem'
+                }}
               />
             </div>
           </div>
@@ -345,7 +435,12 @@ export function EditPolicyModal({
               Cancel
             </button>
 
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
               <Save size={16} />
               <span>{isSubmitting ? 'Saving Changes...' : 'Save Policy Changes'}</span>
             </button>
