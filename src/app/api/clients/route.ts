@@ -3,6 +3,28 @@ import { getClients, createClientWithPolicy, getDashboardStats } from '@/lib/sto
 import { ClientFilterOptions, ClientCreatePayload } from '@/lib/types';
 import { verifyAuthCookie } from '@/lib/auth';
 
+function parseToIsoDate(str?: string): string {
+  if (!str) return '';
+  const trimmed = str.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  if (digitsOnly.length === 8) {
+    const dd = digitsOnly.slice(0, 2);
+    const mm = digitsOnly.slice(2, 4);
+    const yyyy = digitsOnly.slice(4, 8);
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+
+  const parts = trimmed.replace(/[\/\.]/g, '-').split('-').filter(Boolean);
+  if (parts.length === 3) {
+    const [p1, p2, p3] = parts;
+    if (p3.length === 4) return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+    if (p1.length === 4) return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+  }
+  return trimmed;
+}
+
 export async function GET(req: NextRequest) {
   const isAuth = await verifyAuthCookie();
   if (!isAuth) {
@@ -51,7 +73,7 @@ export async function POST(req: NextRequest) {
     const {
       firstName,
       lastName,
-      dateOfBirth,
+      dateOfBirth: rawDob,
       dlNumber,
       phoneNumber,
       email,
@@ -64,11 +86,16 @@ export async function POST(req: NextRequest) {
       propertyType,
       businessName,
       businessType,
-      termStartDate,
-      renewalDate,
-      expiryDate,
+      termStartDate: rawStart,
+      renewalDate: rawRenewal,
+      expiryDate: rawExpiry,
       policyNotes
     } = body;
+
+    const dateOfBirth = parseToIsoDate(rawDob);
+    const termStartDate = parseToIsoDate(rawStart);
+    const renewalDate = parseToIsoDate(rawRenewal);
+    const expiryDate = parseToIsoDate(rawExpiry);
 
     // Validate personal fields
     if (!firstName?.trim() || !lastName?.trim() || !dateOfBirth || !dlNumber?.trim()) {
