@@ -173,13 +173,17 @@ export default function DashboardPage() {
         setIsAddModalOpen(false);
         fetchClients();
         return true;
+      } else if (res.status === 401) {
+        setIsAuthenticated(false);
+        showToast('Session expired. Please log in again.', 'error');
+        return false;
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
         showToast(err.error || 'Failed to create client', 'error');
         return false;
       }
-    } catch (e) {
-      showToast('Network error while creating client.', 'error');
+    } catch (e: any) {
+      showToast(e?.message || 'Network error while creating client.', 'error');
       return false;
     }
   };
@@ -197,13 +201,17 @@ export default function DashboardPage() {
         setEditingClientId(null);
         fetchClients();
         return true;
+      } else if (res.status === 401) {
+        setIsAuthenticated(false);
+        showToast('Session expired. Please log in again.', 'error');
+        return false;
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
         showToast(err.error || 'Failed to update client', 'error');
         return false;
       }
-    } catch (e) {
-      showToast('Error updating client', 'error');
+    } catch (e: any) {
+      showToast(e?.message || 'Error updating client', 'error');
       return false;
     }
   };
