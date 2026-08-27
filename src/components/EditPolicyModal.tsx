@@ -126,7 +126,7 @@ export function EditPolicyModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content scale-in"
         onClick={(e) => e.stopPropagation()}
