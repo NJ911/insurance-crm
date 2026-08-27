@@ -25,6 +25,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useToast } from './Toast';
+import { isoToDisplay } from './CustomDateInput';
 import { differenceInYears, parseISO } from 'date-fns';
 
 interface ClientDetailDrawerProps {
@@ -203,7 +204,7 @@ export function ClientDetailDrawer({
             <div>
               <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', display: 'block' }}>Date of Birth</span>
               <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-                {client.dateOfBirth} {age !== null && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({age}y)</span>}
+                {isoToDisplay(client.dateOfBirth)} {age !== null && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({age}y)</span>}
               </span>
             </div>
 
@@ -381,18 +382,18 @@ export function ClientDetailDrawer({
                   }}>
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block' }}>Term Start</span>
-                      <strong style={{ color: 'var(--text-primary)' }}>{p.termStartDate}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{isoToDisplay(p.termStartDate)}</strong>
                     </div>
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block' }}>Renewal Target</span>
                       <strong style={{ color: pExpired || pDueSoon ? 'var(--status-due-text)' : 'var(--text-primary)' }}>
-                        {p.renewalDate}
+                        {isoToDisplay(p.renewalDate)}
                       </strong>
                     </div>
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block' }}>Expiry Date</span>
                       <strong style={{ color: pExpired ? 'var(--status-expired-text)' : 'var(--text-primary)' }}>
-                        {p.expiryDate}
+                        {isoToDisplay(p.expiryDate)}
                       </strong>
                     </div>
                   </div>

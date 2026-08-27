@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Client, PolicyType, ClientCreatePayload } from '@/lib/types';
-import { X, User, Car, Home, Building2, Shield, Calendar, Phone, Mail, FileText } from 'lucide-react';
+import { X, User, Car, Home, Building2, Shield } from 'lucide-react';
 import { format, addMonths, subDays } from 'date-fns';
+import { CustomDateInput } from './CustomDateInput';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -287,25 +288,13 @@ export function ClientModal({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Date of Birth (DD-MM-YYYY) <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.55rem 0.75rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: errors.dateOfBirth ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                    background: 'var(--bg-input)',
-                    outline: 'none'
-                  }}
-                />
-                {errors.dateOfBirth && <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>{errors.dateOfBirth}</span>}
-              </div>
+              <CustomDateInput
+                label="Date of Birth (DD-MM-YYYY)"
+                required
+                value={dateOfBirth}
+                onChange={setDateOfBirth}
+                error={errors.dateOfBirth}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
@@ -609,60 +598,29 @@ export function ClientModal({
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                      Term Start <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={termStartDate}
-                      onChange={(e) => setTermStartDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.45rem 0.6rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: errors.termStartDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                        background: 'var(--bg-input)',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                      Renewal Target <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={renewalDate}
-                      onChange={(e) => setRenewalDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.45rem 0.6rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: errors.renewalDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                        background: 'var(--bg-input)',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                      Expiry Date <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={expiryDate}
-                      onChange={(e) => setExpiryDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.45rem 0.6rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: errors.expiryDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                        background: 'var(--bg-input)',
-                        outline: 'none'
-                      }}
-                    />
-                  </div>
+                  <CustomDateInput
+                    label="Term Start (DD-MM-YYYY)"
+                    required
+                    value={termStartDate}
+                    onChange={setTermStartDate}
+                    error={errors.termStartDate}
+                  />
+
+                  <CustomDateInput
+                    label="Renewal Target (DD-MM-YYYY)"
+                    required
+                    value={renewalDate}
+                    onChange={setRenewalDate}
+                    error={errors.renewalDate}
+                  />
+
+                  <CustomDateInput
+                    label="Expiry Date (DD-MM-YYYY)"
+                    required
+                    value={expiryDate}
+                    onChange={setExpiryDate}
+                    error={errors.expiryDate}
+                  />
                 </div>
               </div>
             </div>

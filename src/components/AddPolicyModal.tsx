@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Client, PolicyType, PolicyCreatePayload } from '@/lib/types';
-import { X, Car, Home, Building2, Shield, Plus, Calendar } from 'lucide-react';
+import { X, Car, Home, Building2, Shield, Plus } from 'lucide-react';
 import { format, addMonths, subDays } from 'date-fns';
+import { CustomDateInput } from './CustomDateInput';
 
 interface AddPolicyModalProps {
   isOpen: boolean;
@@ -396,62 +397,29 @@ export function AddPolicyModal({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Term Start <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={termStartDate}
-                  onChange={(e) => setTermStartDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.45rem 0.6rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: errors.termStartDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                    background: 'var(--bg-input)',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+              <CustomDateInput
+                label="Term Start (DD-MM-YYYY)"
+                required
+                value={termStartDate}
+                onChange={setTermStartDate}
+                error={errors.termStartDate}
+              />
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Renewal Target <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={renewalDate}
-                  onChange={(e) => setRenewalDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.45rem 0.6rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: errors.renewalDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                    background: 'var(--bg-input)',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+              <CustomDateInput
+                label="Renewal Target (DD-MM-YYYY)"
+                required
+                value={renewalDate}
+                onChange={setRenewalDate}
+                error={errors.renewalDate}
+              />
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  Expiry Date <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.45rem 0.6rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: errors.expiryDate ? '1px solid #ef4444' : '1px solid var(--border-strong)',
-                    background: 'var(--bg-input)',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+              <CustomDateInput
+                label="Expiry Date (DD-MM-YYYY)"
+                required
+                value={expiryDate}
+                onChange={setExpiryDate}
+                error={errors.expiryDate}
+              />
             </div>
           </div>
 

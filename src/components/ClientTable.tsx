@@ -31,6 +31,7 @@ import {
   Users
 } from 'lucide-react';
 import { useToast } from './Toast';
+import { isoToDisplay } from './CustomDateInput';
 
 interface ClientTableProps {
   clients: Client[];
@@ -362,7 +363,7 @@ export function ClientTable({
                       </div>
 
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        DOB: {client.dateOfBirth}
+                        DOB: {isoToDisplay(client.dateOfBirth)}
                       </div>
 
                       {client.phoneNumber && (
@@ -501,10 +502,10 @@ export function ClientTable({
                     {/* 3. Next Renewal Target */}
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'top' }}>
                       <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: isExpired || isDueSoon ? 'var(--status-due-text)' : 'var(--text-primary)' }}>
-                        {client.nearestRenewalDate}
+                        {isoToDisplay(client.nearestRenewalDate)}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                        Exp: {client.nearestExpiryDate}
+                        Exp: {isoToDisplay(client.nearestExpiryDate)}
                       </div>
 
                       <div style={{ marginTop: '0.35rem' }}>

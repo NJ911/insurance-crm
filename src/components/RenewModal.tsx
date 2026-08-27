@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Client, Policy, RenewalMonthOption } from '@/lib/types';
-import { X, RefreshCw, ArrowRight, Car, Home, Building2, ShieldCheck } from 'lucide-react';
+import { X, ArrowRight, Car, Home, Building2 } from 'lucide-react';
 import { addMonths, format, parseISO, subDays } from 'date-fns';
+import { CustomDateInput, isoToDisplay } from './CustomDateInput';
 
 interface RenewModalProps {
   isOpen: boolean;
@@ -147,6 +148,7 @@ export function RenewModal({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             className="btn btn-ghost btn-icon"
             style={{ borderRadius: 'var(--radius-full)' }}
@@ -171,7 +173,7 @@ export function RenewModal({
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Current Term Expiry</span>
               <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {policy.expiryDate}
+                {isoToDisplay(policy.expiryDate)}
               </span>
             </div>
 
@@ -180,7 +182,7 @@ export function RenewModal({
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>New Term Expiry (+{months}m)</span>
               <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--status-active-text)' }}>
-                {newExpiryDate}
+                {isoToDisplay(newExpiryDate)}
               </span>
             </div>
           </div>
@@ -262,65 +264,26 @@ export function RenewModal({
             paddingTop: '1rem',
             borderTop: '1px solid var(--border-subtle)'
           }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                New Term Start
-              </label>
-              <input
-                type="date"
-                value={newTermStartDate}
-                onChange={(e) => handleTermStartChange(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.45rem 0.6rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-strong)',
-                  background: 'var(--bg-input)',
-                  fontSize: '0.8125rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
+            <CustomDateInput
+              label="New Term Start"
+              required
+              value={newTermStartDate}
+              onChange={handleTermStartChange}
+            />
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                Next Renewal Date
-              </label>
-              <input
-                type="date"
-                value={newRenewalDate}
-                onChange={(e) => setNewRenewalDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.45rem 0.6rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-strong)',
-                  background: 'var(--bg-input)',
-                  fontSize: '0.8125rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
+            <CustomDateInput
+              label="Next Renewal Date"
+              required
+              value={newRenewalDate}
+              onChange={setNewRenewalDate}
+            />
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                New Expiry Date
-              </label>
-              <input
-                type="date"
-                value={newExpiryDate}
-                onChange={(e) => setNewExpiryDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.45rem 0.6rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-strong)',
-                  background: 'var(--bg-input)',
-                  fontSize: '0.8125rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
+            <CustomDateInput
+              label="New Expiry Date"
+              required
+              value={newExpiryDate}
+              onChange={setNewExpiryDate}
+            />
           </div>
 
           {/* Renewal Note */}
@@ -330,7 +293,7 @@ export function RenewModal({
             </label>
             <input
               type="text"
-              placeholder="e.g. Rate unchanged, paid via direct deposit"
+              placeholder="Renewal notes..."
               value={renewalNote}
               onChange={(e) => setRenewalNote(e.target.value)}
               style={{
