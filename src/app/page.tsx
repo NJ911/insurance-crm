@@ -22,6 +22,8 @@ import { ClientDetailDrawer } from '@/components/ClientDetailDrawer';
 import { AuthScreen } from '@/components/AuthScreen';
 import { useToast } from '@/components/Toast';
 
+import { parseISO } from 'date-fns';
+
 export default function DashboardPage() {
   const { showToast } = useToast();
 
@@ -36,8 +38,8 @@ export default function DashboardPage() {
   const [sortBy, setSortBy] = useState<ClientFilterOptions['sortBy']>('expiryDate');
   const [sortOrder, setSortOrder] = useState<ClientFilterOptions['sortOrder']>('asc');
 
-  // Data State
-  const [clients, setClients] = useState<Client[]>([]);
+  // Master Data State (All active + archived clients stored in memory)
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalClients: 0,
     totalPolicies: 0,
@@ -99,34 +101,18 @@ export default function DashboardPage() {
     localStorage.setItem('crm_theme', nextTheme);
   };
 
-  // Fetch Clients
+  // Fetch Clients from Server (Background sync)
   const fetchClients = useCallback(async (showIndicator = false) => {
     if (showIndicator) setIsRefreshing(true);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
-      if (statusFilter) params.set('status', statusFilter);
-      if (selectedPolicyType && selectedPolicyType !== 'all') params.set('policyType', selectedPolicyType);
-      params.set('urgencyDays', urgencyThreshold.toString());
-      if (sortBy) params.set('sortBy', sortBy);
-      if (sortOrder) params.set('sortOrder', sortOrder);
-
-      const res = await fetch(`/api/clients?${params.toString()}`);
+      const res = await fetch(`/api/clients?urgencyDays=${urgencyThreshold}`);
       if (res.ok) {
         const data = await res.json();
-        setClients(data.clients || []);
-        setStats(data.stats || {
-          totalClients: 0,
-          totalPolicies: 0,
-          autoPoliciesCount: 0,
-          homePoliciesCount: 0,
-          commercialPoliciesCount: 0,
-          dueSoonCount: 0,
-          expiredCount: 0,
-          activeCount: 0,
-          archivedCount: 0,
-          expiringThisMonthCount: 0
-        });
+        const incomingClients = data.allClients || data.clients || [];
+        setAllClients(incomingClients);
+        if (data.stats) {
+          setStats(data.stats);
+        }
       } else if (res.status === 401) {
         setIsAuthenticated(false);
       }
@@ -136,7 +122,7 @@ export default function DashboardPage() {
       setIsLoading(false);
       if (showIndicator) setIsRefreshing(false);
     }
-  }, [searchQuery, statusFilter, selectedPolicyType, urgencyThreshold, sortBy, sortOrder]);
+  }, [urgencyThreshold]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -144,31 +130,110 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, fetchClients]);
 
-  // Derived Client Targets for Modals
+  // Instant In-Memory Filtering & Sorting (0ms Tab Switching!)
+  const clients = useMemo(() => {
+    let result = [...allClients];
+
+    // 1. Archive filter
+    if (statusFilter === 'archived') {
+      result = result.filter(c => !!c.archivedAt);
+    } else {
+      result = result.filter(c => !c.archivedAt);
+    }
+
+    // 2. Policy Type filter
+    if (selectedPolicyType && selectedPolicyType !== 'all') {
+      result = result.filter(c => c.policies.some(p => p.policyType === selectedPolicyType));
+    }
+
+    // 3. Status filter
+    if (statusFilter && statusFilter !== 'all' && statusFilter !== 'archived') {
+      if (statusFilter === 'due_soon') {
+        result = result.filter(c => c.status === 'due_soon');
+      } else if (statusFilter === 'expired') {
+        result = result.filter(c => c.status === 'expired');
+      } else if (statusFilter === 'active') {
+        result = result.filter(c => c.status === 'active');
+      } else if (statusFilter === 'this_month') {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        result = result.filter(c =>
+          c.policies.some(p => {
+            try {
+              const exp = parseISO(p.expiryDate);
+              return exp.getMonth() === currentMonth && exp.getFullYear() === currentYear;
+            } catch (e) {
+              return false;
+            }
+          })
+        );
+      }
+    }
+
+    // 4. Search Filter
+    if (searchQuery.trim()) {
+      const term = searchQuery.trim().toLowerCase();
+      result = result.filter(c => {
+        const nameMatch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(term);
+        const dlMatch = (c.dlNumber || '').toLowerCase().includes(term);
+        const phoneMatch = (c.phoneNumber || '').toLowerCase().includes(term);
+        const emailMatch = (c.email || '').toLowerCase().includes(term);
+        const policyMatch = c.policies.some(p =>
+          (p.plateNumber && p.plateNumber.toLowerCase().includes(term)) ||
+          (p.vehicleMakeModel && p.vehicleMakeModel.toLowerCase().includes(term)) ||
+          (p.propertyAddress && p.propertyAddress.toLowerCase().includes(term)) ||
+          (p.businessName && p.businessName.toLowerCase().includes(term)) ||
+          (p.businessType && p.businessType.toLowerCase().includes(term)) ||
+          (p.policyNumber && p.policyNumber.toLowerCase().includes(term))
+        );
+        return nameMatch || dlMatch || phoneMatch || emailMatch || policyMatch;
+      });
+    }
+
+    // 5. Sorting
+    result.sort((a, b) => {
+      let comp = 0;
+      if (sortBy === 'expiryDate') {
+        comp = a.nearestExpiryDate.localeCompare(b.nearestExpiryDate);
+      } else if (sortBy === 'renewalDate') {
+        comp = a.nearestRenewalDate.localeCompare(b.nearestRenewalDate);
+      } else if (sortBy === 'name') {
+        comp = `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`);
+      } else if (sortBy === 'createdAt') {
+        comp = a.createdAt.localeCompare(b.createdAt);
+      }
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+
+    return result;
+  }, [allClients, statusFilter, selectedPolicyType, searchQuery, sortBy, sortOrder]);
+
+  // Derived Client Targets for Modals (Looking up in allClients ensures seamless modal flow)
   const inspectingClient = useMemo(() => {
     if (!inspectingClientId) return null;
-    return clients.find(c => c.id === inspectingClientId) || null;
-  }, [inspectingClientId, clients]);
+    return allClients.find(c => c.id === inspectingClientId) || null;
+  }, [inspectingClientId, allClients]);
 
   const editingClient = useMemo(() => {
     if (!editingClientId) return null;
-    return clients.find(c => c.id === editingClientId) || null;
-  }, [editingClientId, clients]);
+    return allClients.find(c => c.id === editingClientId) || null;
+  }, [editingClientId, allClients]);
 
   const addingPolicyClient = useMemo(() => {
     if (!addingPolicyClientId) return null;
-    return clients.find(c => c.id === addingPolicyClientId) || null;
-  }, [addingPolicyClientId, clients]);
+    return allClients.find(c => c.id === addingPolicyClientId) || null;
+  }, [addingPolicyClientId, allClients]);
 
   const renewingClient = useMemo(() => {
     if (!renewingClientId) return null;
-    return clients.find(c => c.id === renewingClientId) || null;
-  }, [renewingClientId, clients]);
+    return allClients.find(c => c.id === renewingClientId) || null;
+  }, [renewingClientId, allClients]);
 
   const editingPolicyClient = useMemo(() => {
     if (!editingPolicyClientId) return null;
-    return clients.find(c => c.id === editingPolicyClientId) || null;
-  }, [editingPolicyClientId, clients]);
+    return allClients.find(c => c.id === editingPolicyClientId) || null;
+  }, [editingPolicyClientId, allClients]);
 
   // Handle Save New Client + Policy
   const handleSaveClient = async (formData: ClientCreatePayload): Promise<boolean> => {

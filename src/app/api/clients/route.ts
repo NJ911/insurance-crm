@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getClients, createClientWithPolicy, getDashboardStats } from '@/lib/storage';
+import { getClientsAndStats, createClientWithPolicy } from '@/lib/storage';
 import { ClientFilterOptions, ClientCreatePayload } from '@/lib/types';
 import { verifyAuthCookie } from '@/lib/auth';
 
@@ -49,11 +49,11 @@ export async function GET(req: NextRequest) {
       sortOrder
     };
 
-    const clients = await getClients(filters);
-    const stats = await getDashboardStats(filters.urgencyDaysThreshold);
+    const { clients, allClients, stats } = await getClientsAndStats(filters);
 
     return NextResponse.json({
       clients,
+      allClients,
       stats
     });
   } catch (error: any) {

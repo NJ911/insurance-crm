@@ -68,67 +68,38 @@ function mapRowToPolicy(row: any, urgencyThreshold: number = 30): Policy {
   };
 }
 
-export async function getClients(filters?: ClientFilterOptions): Promise<Client[]> {
-  const threshold = filters?.urgencyDaysThreshold || 30;
-
+export async function getAllClientsRaw(urgencyDaysThreshold: number = 30): Promise<Client[]> {
   let clientRows: any[] = [];
   let policyRows: any[] = [];
 
   if (isSupabaseConfigured && supabase) {
-    // 1. Fetch from Supabase
-    let clientQuery = supabase.from('clients').select('*');
-    if (filters?.status === 'archived') {
-      clientQuery = clientQuery.not('archived_at', 'is', null);
-    } else {
-      clientQuery = clientQuery.is('archived_at', null);
-    }
-
-    const { data: cData, error: cErr } = await clientQuery;
-    if (cErr) console.error('Supabase fetch clients error:', cErr);
-    clientRows = cData || [];
-
-    const { data: pData, error: pErr } = await supabase
-      .from('policies')
-      .select('*')
-      .is('archived_at', null);
-    if (pErr) console.error('Supabase fetch policies error:', pErr);
-    policyRows = pData || [];
+    // Single parallel query for both tables
+    const [cRes, pRes] = await Promise.all([
+      supabase.from('clients').select('*'),
+      supabase.from('policies').select('*')
+    ]);
+    if (cRes.error) console.error('Supabase fetch clients error:', cRes.error);
+    if (pRes.error) console.error('Supabase fetch policies error:', pRes.error);
+    clientRows = cRes.data || [];
+    policyRows = pRes.data || [];
   } else {
-    // 2. Fetch from Local SQLite
     const db = getDb();
-    let clientQueryStr = 'SELECT * FROM clients';
-    if (filters?.status === 'archived') {
-      clientQueryStr += ' WHERE archived_at IS NOT NULL';
-    } else {
-      clientQueryStr += ' WHERE archived_at IS NULL';
-    }
-    clientRows = db.prepare(clientQueryStr).all();
-    policyRows = db.prepare('SELECT * FROM policies WHERE archived_at IS NULL').all();
+    clientRows = db.prepare('SELECT * FROM clients').all();
+    policyRows = db.prepare('SELECT * FROM policies').all();
   }
 
-  // 3. Assemble policies by client ID
   const policiesByClientId = new Map<string, Policy[]>();
   for (const pr of policyRows) {
-    const policy = mapRowToPolicy(pr, threshold);
+    if (pr.archived_at) continue;
+    const policy = mapRowToPolicy(pr, urgencyDaysThreshold);
     const list = policiesByClientId.get(policy.clientId) || [];
     list.push(policy);
     policiesByClientId.set(policy.clientId, list);
   }
 
-  // 4. Assemble clients with policies & compute aggregate statuses
-  let clients: Client[] = [];
-
+  const clients: Client[] = [];
   for (const cr of clientRows) {
-    let clientPolicies = policiesByClientId.get(cr.id) || [];
-
-    const hasMatchingPolicyType = !filters?.policyType || filters.policyType === 'all'
-      ? true
-      : clientPolicies.some(p => p.policyType === filters.policyType);
-
-    if (!hasMatchingPolicyType) {
-      continue;
-    }
-
+    const clientPolicies = policiesByClientId.get(cr.id) || [];
     let clientStatus: ClientStatus = 'active';
     let nearestExpiry = '9999-12-31';
     let nearestRenewal = '9999-12-31';
@@ -155,7 +126,7 @@ export async function getClients(filters?: ClientFilterOptions): Promise<Client[
       minDaysExpiry = 0;
     }
 
-    const clientObj: Client = {
+    clients.push({
       id: cr.id,
       firstName: cr.first_name,
       lastName: cr.last_name,
@@ -173,20 +144,60 @@ export async function getClients(filters?: ClientFilterOptions): Promise<Client[
       createdAt: cr.created_at,
       updatedAt: cr.updated_at,
       archivedAt: cr.archived_at || null
-    };
-
-    clients.push(clientObj);
+    });
   }
 
-  // 5. Search Filter
+  return clients;
+}
+
+export function filterAndSortClients(allClients: Client[], filters?: ClientFilterOptions): Client[] {
+  let result = [...allClients];
+
+  // 1. Archive filter
+  if (filters?.status === 'archived') {
+    result = result.filter(c => !!c.archivedAt);
+  } else {
+    result = result.filter(c => !c.archivedAt);
+  }
+
+  // 2. Policy Type filter
+  if (filters?.policyType && filters.policyType !== 'all') {
+    result = result.filter(c => c.policies.some(p => p.policyType === filters.policyType));
+  }
+
+  // 3. Status filter
+  if (filters?.status && filters.status !== 'all' && filters.status !== 'archived') {
+    if (filters.status === 'due_soon') {
+      result = result.filter(c => c.status === 'due_soon');
+    } else if (filters.status === 'expired') {
+      result = result.filter(c => c.status === 'expired');
+    } else if (filters.status === 'active') {
+      result = result.filter(c => c.status === 'active');
+    } else if (filters.status === 'this_month') {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      result = result.filter(c =>
+        c.policies.some(p => {
+          try {
+            const exp = parseISO(p.expiryDate);
+            return exp.getMonth() === currentMonth && exp.getFullYear() === currentYear;
+          } catch (e) {
+            return false;
+          }
+        })
+      );
+    }
+  }
+
+  // 4. Search Filter
   if (filters?.search && filters.search.trim()) {
     const term = filters.search.trim().toLowerCase();
-    clients = clients.filter(c => {
+    result = result.filter(c => {
       const nameMatch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(term);
       const dlMatch = (c.dlNumber || '').toLowerCase().includes(term);
       const phoneMatch = c.phoneNumber?.toLowerCase().includes(term);
       const emailMatch = c.email?.toLowerCase().includes(term);
-
       const policyMatch = c.policies.some(p =>
         (p.plateNumber && p.plateNumber.toLowerCase().includes(term)) ||
         (p.vehicleMakeModel && p.vehicleMakeModel.toLowerCase().includes(term)) ||
@@ -195,37 +206,15 @@ export async function getClients(filters?: ClientFilterOptions): Promise<Client[
         (p.businessType && p.businessType.toLowerCase().includes(term)) ||
         (p.policyNumber && p.policyNumber.toLowerCase().includes(term))
       );
-
       return nameMatch || dlMatch || phoneMatch || emailMatch || policyMatch;
     });
   }
 
-  // 6. Status Filter
-  if (filters?.status && filters.status !== 'all' && filters.status !== 'archived') {
-    if (filters.status === 'due_soon') {
-      clients = clients.filter(c => c.status === 'due_soon');
-    } else if (filters.status === 'expired') {
-      clients = clients.filter(c => c.status === 'expired');
-    } else if (filters.status === 'active') {
-      clients = clients.filter(c => c.status === 'active');
-    } else if (filters.status === 'this_month') {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      clients = clients.filter(c => {
-        return c.policies.some(p => {
-          const exp = parseISO(p.expiryDate);
-          return exp.getMonth() === currentMonth && exp.getFullYear() === currentYear;
-        });
-      });
-    }
-  }
-
-  // 7. Sorting
+  // 5. Sorting
   const sortBy = filters?.sortBy || 'expiryDate';
   const sortOrder = filters?.sortOrder || 'asc';
 
-  clients.sort((a, b) => {
+  result.sort((a, b) => {
     let comp = 0;
     if (sortBy === 'expiryDate') {
       comp = a.nearestExpiryDate.localeCompare(b.nearestExpiryDate);
@@ -239,7 +228,30 @@ export async function getClients(filters?: ClientFilterOptions): Promise<Client[
     return sortOrder === 'asc' ? comp : -comp;
   });
 
-  return clients;
+  return result;
+}
+
+export async function getClients(filters?: ClientFilterOptions): Promise<Client[]> {
+  const threshold = filters?.urgencyDaysThreshold || 30;
+  const allClients = await getAllClientsRaw(threshold);
+  return filterAndSortClients(allClients, filters);
+}
+
+export async function getClientsAndStats(filters?: ClientFilterOptions): Promise<{
+  clients: Client[];
+  allClients: Client[];
+  stats: DashboardStats;
+}> {
+  const threshold = filters?.urgencyDaysThreshold || 30;
+  const allClients = await getAllClientsRaw(threshold);
+  const clients = filterAndSortClients(allClients, filters);
+  const stats = computeDashboardStats(allClients);
+
+  return {
+    clients,
+    allClients,
+    stats
+  };
 }
 
 export async function getClientById(id: string): Promise<Client | null> {
@@ -620,9 +632,9 @@ export async function deleteClientPermanently(id: string): Promise<boolean> {
   }
 }
 
-export async function getDashboardStats(urgencyDaysThreshold: number = 30): Promise<DashboardStats> {
-  const activeClients = await getClients({ status: 'all', urgencyDaysThreshold });
-  const archivedClients = await getClients({ status: 'archived', urgencyDaysThreshold });
+export function computeDashboardStats(allClients: Client[]): DashboardStats {
+  const activeClients = allClients.filter(c => !c.archivedAt);
+  const archivedClients = allClients.filter(c => !!c.archivedAt);
 
   let dueSoonCount = 0;
   let expiredCount = 0;
@@ -648,10 +660,12 @@ export async function getDashboardStats(urgencyDaysThreshold: number = 30): Prom
       else if (p.policyType === 'home') homePoliciesCount++;
       else if (p.policyType === 'commercial') commercialPoliciesCount++;
 
-      const exp = parseISO(p.expiryDate);
-      if (exp.getMonth() === currentMonth && exp.getFullYear() === currentYear) {
-        expiringThisMonthCount++;
-      }
+      try {
+        const exp = parseISO(p.expiryDate);
+        if (exp.getMonth() === currentMonth && exp.getFullYear() === currentYear) {
+          expiringThisMonthCount++;
+        }
+      } catch (e) {}
     }
   }
 
@@ -667,6 +681,11 @@ export async function getDashboardStats(urgencyDaysThreshold: number = 30): Prom
     archivedCount: archivedClients.length,
     expiringThisMonthCount
   };
+}
+
+export async function getDashboardStats(urgencyDaysThreshold: number = 30): Promise<DashboardStats> {
+  const allClients = await getAllClientsRaw(urgencyDaysThreshold);
+  return computeDashboardStats(allClients);
 }
 
 export function exportClientsToCsv(clients: Client[]): string {
