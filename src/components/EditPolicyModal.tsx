@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Client, Policy, PolicyType } from '@/lib/types';
 import { CustomDateInput } from './CustomDateInput';
 import { X, Calendar, Shield, Car, Home, Building2, Save } from 'lucide-react';
-import { addMonths, format, parseISO, isValid } from 'date-fns';
+import { addMonths, subDays, format, parseISO, isValid } from 'date-fns';
 
 interface EditPolicyModalProps {
   isOpen: boolean;
@@ -108,20 +108,42 @@ export function EditPolicyModal({
     }
   };
 
-  const handleQuickPreset = (months: number) => {
+  const handleQuickDuration = (months: number) => {
     try {
       const baseStart = termStartDate ? parseISO(termStartDate) : new Date();
       const validStart = isValid(baseStart) ? baseStart : new Date();
       const formattedStart = format(validStart, 'yyyy-MM-dd');
       setTermStartDate(formattedStart);
 
-      const targetDate = addMonths(validStart, months);
-      const renewalTarget = addMonths(targetDate, -1);
+      const targetExpiry = addMonths(validStart, months);
+      const renewalTarget = subDays(targetExpiry, 45);
 
       setRenewalDate(format(renewalTarget, 'yyyy-MM-dd'));
-      setExpiryDate(format(targetDate, 'yyyy-MM-dd'));
+      setExpiryDate(format(targetExpiry, 'yyyy-MM-dd'));
     } catch (e) {
       console.error('Error applying date preset', e);
+    }
+  };
+
+  const handleSetRenewalDaysBeforeExpiry = (days: number) => {
+    try {
+      if (expiryDate) {
+        const exp = parseISO(expiryDate);
+        if (isValid(exp)) {
+          const newRenewal = subDays(exp, days);
+          setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
+          return;
+        }
+      }
+      const baseStart = termStartDate ? parseISO(termStartDate) : new Date();
+      const validStart = isValid(baseStart) ? baseStart : new Date();
+      const defaultExp = addMonths(validStart, 12);
+      if (!termStartDate) setTermStartDate(format(validStart, 'yyyy-MM-dd'));
+      if (!expiryDate) setExpiryDate(format(defaultExp, 'yyyy-MM-dd'));
+      const newRenewal = subDays(defaultExp, days);
+      setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
+    } catch (e) {
+      console.error('Error setting renewal offset', e);
     }
   };
 
@@ -343,16 +365,16 @@ export function EditPolicyModal({
               borderRadius: 'var(--radius-md)',
               padding: '1rem'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <Calendar size={14} style={{ color: 'var(--brand-primary)' }} />
                   Policy Term & Renewal Dates
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginRight: '0.2rem' }}>Quick preset:</span>
-                  <button type="button" onClick={() => handleQuickPreset(3)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+3m</button>
-                  <button type="button" onClick={() => handleQuickPreset(6)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+6m</button>
-                  <button type="button" onClick={() => handleQuickPreset(12)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+12m</button>
+                  <button type="button" onClick={() => handleQuickDuration(3)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+3m</button>
+                  <button type="button" onClick={() => handleQuickDuration(6)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+6m</button>
+                  <button type="button" onClick={() => handleQuickDuration(12)} className="btn btn-sm btn-secondary" style={{ padding: '0.15rem 0.4rem', fontSize: '0.6875rem' }}>+12m</button>
                 </div>
               </div>
 
@@ -371,9 +393,47 @@ export function EditPolicyModal({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                    Renewal Target <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                      Renewal Target <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleSetRenewalDaysBeforeExpiry(45)}
+                        title="Set Renewal Target to 45 days before expiry date"
+                        style={{
+                          fontSize: '0.6875rem',
+                          padding: '0.05rem 0.35rem',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(59, 130, 246, 0.12)',
+                          color: 'var(--brand-primary)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        -45d
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetRenewalDaysBeforeExpiry(30)}
+                        title="Set Renewal Target to 30 days before expiry date"
+                        style={{
+                          fontSize: '0.6875rem',
+                          padding: '0.05rem 0.35rem',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--bg-surface)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-subtle)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        -30d
+                      </button>
+                    </div>
+                  </div>
                   <CustomDateInput
                     value={renewalDate}
                     onChange={setRenewalDate}

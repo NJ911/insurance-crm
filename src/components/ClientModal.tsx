@@ -180,8 +180,29 @@ export function ClientModal({
         setTermStartDate(format(baseStart, 'yyyy-MM-dd'));
       }
       const newExpiry = addMonths(baseStart, months);
-      const newRenewal = subDays(newExpiry, 30);
+      const newRenewal = subDays(newExpiry, 45);
       setExpiryDate(format(newExpiry, 'yyyy-MM-dd'));
+      setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleSetRenewalDaysBeforeExpiry = (days: number) => {
+    try {
+      if (expiryDate) {
+        const exp = new Date(expiryDate);
+        if (!isNaN(exp.getTime())) {
+          const newRenewal = subDays(exp, days);
+          setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
+          return;
+        }
+      }
+      const baseStart = termStartDate ? new Date(termStartDate) : new Date();
+      const defaultExp = addMonths(baseStart, 12);
+      if (!termStartDate) setTermStartDate(format(baseStart, 'yyyy-MM-dd'));
+      if (!expiryDate) setExpiryDate(format(defaultExp, 'yyyy-MM-dd'));
+      const newRenewal = subDays(defaultExp, days);
       setRenewalDate(format(newRenewal, 'yyyy-MM-dd'));
     } catch (e) {
       // ignore
@@ -605,13 +626,55 @@ export function ClientModal({
                     error={errors.termStartDate}
                   />
 
-                  <CustomDateInput
-                    label="Renewal Target"
-                    required
-                    value={renewalDate}
-                    onChange={setRenewalDate}
-                    error={errors.renewalDate}
-                  />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                      <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        Renewal Target <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSetRenewalDaysBeforeExpiry(45)}
+                          title="Set Target to 45 days before expiry date"
+                          style={{
+                            fontSize: '0.6875rem',
+                            padding: '0.05rem 0.35rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(59, 130, 246, 0.12)',
+                            color: 'var(--brand-primary)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          -45d
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetRenewalDaysBeforeExpiry(30)}
+                          title="Set Target to 30 days before expiry date"
+                          style={{
+                            fontSize: '0.6875rem',
+                            padding: '0.05rem 0.35rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--bg-surface)',
+                            color: 'var(--text-muted)',
+                            border: '1px solid var(--border-subtle)',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          -30d
+                        </button>
+                      </div>
+                    </div>
+                    <CustomDateInput
+                      value={renewalDate}
+                      onChange={setRenewalDate}
+                      error={errors.renewalDate}
+                    />
+                    {errors.renewalDate && <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{errors.renewalDate}</span>}
+                  </div>
 
                   <CustomDateInput
                     label="Expiry Date"

@@ -47,7 +47,7 @@ export function RenewModal({
       const expStr = format(exp, 'yyyy-MM-dd');
       setNewExpiryDate(expStr);
 
-      const renew = subDays(exp, 30);
+      const renew = subDays(exp, 45);
       setNewRenewalDate(format(renew, 'yyyy-MM-dd'));
       setRenewalNote('');
     }
@@ -61,7 +61,7 @@ export function RenewModal({
       const base = parseISO(newTermStartDate || policy.expiryDate);
       const exp = addMonths(base, selectedMonths);
       setNewExpiryDate(format(exp, 'yyyy-MM-dd'));
-      setNewRenewalDate(format(subDays(exp, 30), 'yyyy-MM-dd'));
+      setNewRenewalDate(format(subDays(exp, 45), 'yyyy-MM-dd'));
     } catch (e) {
       // fallback
     }
@@ -73,7 +73,18 @@ export function RenewModal({
       const base = parseISO(val);
       const exp = addMonths(base, months);
       setNewExpiryDate(format(exp, 'yyyy-MM-dd'));
-      setNewRenewalDate(format(subDays(exp, 30), 'yyyy-MM-dd'));
+      setNewRenewalDate(format(subDays(exp, 45), 'yyyy-MM-dd'));
+    } catch (e) {
+      // fallback
+    }
+  };
+
+  const handleSetRenewalOffset = (days: number) => {
+    try {
+      if (newExpiryDate) {
+        const exp = parseISO(newExpiryDate);
+        setNewRenewalDate(format(subDays(exp, days), 'yyyy-MM-dd'));
+      }
     } catch (e) {
       // fallback
     }
@@ -271,12 +282,53 @@ export function RenewModal({
               onChange={handleTermStartChange}
             />
 
-            <CustomDateInput
-              label="Next Renewal Date"
-              required
-              value={newRenewalDate}
-              onChange={setNewRenewalDate}
-            />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Next Renewal Date <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSetRenewalOffset(45)}
+                    title="Set Target to 45 days before expiry date"
+                    style={{
+                      fontSize: '0.6875rem',
+                      padding: '0.05rem 0.35rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: 'var(--brand-primary)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    -45d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetRenewalOffset(30)}
+                    title="Set Target to 30 days before expiry date"
+                    style={{
+                      fontSize: '0.6875rem',
+                      padding: '0.05rem 0.35rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--bg-surface)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border-subtle)',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    -30d
+                  </button>
+                </div>
+              </div>
+              <CustomDateInput
+                value={newRenewalDate}
+                onChange={setNewRenewalDate}
+              />
+            </div>
 
             <CustomDateInput
               label="New Expiry Date"
